@@ -92,7 +92,7 @@ def load(
 
 @app.command()
 def export(
-    format: str = typer.Option("yaml", "--format", "-f", help="Export format: yaml or json"),
+    format: str = typer.Option("yaml", "--format", "-f", help="Export format: yaml, json, prompt, jsonld, or schema-card"),
     output: str = typer.Option(None, "--output", "-o", help="Output file path"),
 ):
     """Export the ontology to a specific format."""
@@ -108,8 +108,20 @@ def export(
     elif format == "yaml":
         out = Path(output) if output else path
         save_yaml(onto, out)
+    elif format == "prompt":
+        from ontobuilder.serialization.prompt_io import save_prompt
+        out = Path(output) if output else path.parent / "ontology.prompt.txt"
+        save_prompt(onto, out)
+    elif format == "jsonld":
+        from ontobuilder.serialization.jsonld_io import save_jsonld
+        out = Path(output) if output else path.parent / "ontology.jsonld"
+        save_jsonld(onto, out)
+    elif format == "schema-card":
+        from ontobuilder.serialization.schemacard_io import save_schema_card
+        out = Path(output) if output else path.parent / "ontology.schema-card.json"
+        save_schema_card(onto, out)
     else:
-        typer.echo(f"Unknown format: {format}. Use 'yaml' or 'json'.")
+        typer.echo(f"Unknown format: {format}. Use 'yaml', 'json', 'prompt', 'jsonld', or 'schema-card'.")
         raise typer.Exit(1)
     typer.echo(f"Exported to {out}")
 

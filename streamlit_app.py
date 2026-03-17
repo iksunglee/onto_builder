@@ -161,6 +161,35 @@ with st.sidebar:
 
     st.divider()
 
+    with st.expander("🤖 Export for LLM / RAG", expanded=False):
+        st.caption("Export your ontology in formats optimized for LLM consumption and RAG pipelines.")
+        from ontobuilder.serialization.prompt_io import export_prompt
+        from ontobuilder.serialization.jsonld_io import export_jsonld
+        from ontobuilder.serialization.schemacard_io import export_schema_card
+        st.download_button(
+            "📄 System Prompt (.txt)",
+            data=export_prompt(onto),
+            file_name="ontology.prompt.txt",
+            mime="text/plain",
+            use_container_width=True,
+        )
+        st.download_button(
+            "🔗 JSON-LD (.jsonld)",
+            data=export_jsonld(onto),
+            file_name="ontology.jsonld",
+            mime="application/ld+json",
+            use_container_width=True,
+        )
+        st.download_button(
+            "📋 Schema Card (.json)",
+            data=export_schema_card(onto),
+            file_name="ontology.schema-card.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+
+    st.divider()
+
     # -- Stats --
     st.subheader("Stats")
     st.metric("Concepts", len(onto.concepts))
