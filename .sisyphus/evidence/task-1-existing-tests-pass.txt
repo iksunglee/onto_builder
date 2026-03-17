@@ -1,0 +1,38 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\iksun\AppData\Local\Python\pythoncore-3.14-64\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\iksun\Documents\ontobuilder
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 28 items
+
+tests/test_graph.py::test_networkx_backend_basic PASSED                  [  3%]
+tests/test_graph.py::test_networkx_backend_ancestors PASSED              [  7%]
+tests/test_graph.py::test_networkx_backend_remove PASSED                 [ 10%]
+tests/test_graph.py::test_networkx_backend_roundtrip PASSED              [ 14%]
+tests/test_graph.py::test_ontology_with_backend PASSED                   [ 17%]
+tests/test_graph.py::test_ontology_set_backend_syncs_existing PASSED     [ 21%]
+tests/test_model.py::test_property_roundtrip PASSED                      [ 25%]
+tests/test_model.py::test_property_defaults PASSED                       [ 28%]
+tests/test_model.py::test_concept_roundtrip PASSED                       [ 32%]
+tests/test_model.py::test_concept_minimal PASSED                         [ 35%]
+tests/test_model.py::test_relation_roundtrip PASSED                      [ 39%]
+tests/test_model.py::test_instance_roundtrip PASSED                      [ 42%]
+tests/test_ontology.py::test_create_ontology PASSED                      [ 46%]
+tests/test_ontology.py::test_add_concept PASSED                          [ 50%]
+tests/test_ontology.py::test_add_concept_with_parent PASSED              [ 53%]
+tests/test_ontology.py::test_add_concept_duplicate PASSED                [ 57%]
+tests/test_ontology.py::test_add_concept_missing_parent PASSED           [ 60%]
+tests/test_ontology.py::test_remove_concept PASSED                       [ 64%]
+tests/test_ontology.py::test_add_property PASSED                         [ 67%]
+tests/test_ontology.py::test_add_property_invalid_type PASSED            [ 71%]
+tests/test_ontology.py::test_add_property_duplicate PASSED               [ 75%]
+tests/test_ontology.py::test_add_relation PASSED                         [ 78%]
+tests/test_ontology.py::test_add_relation_missing_concept PASSED         [ 82%]
+tests/test_ontology.py::test_remove_relation PASSED                      [ 85%]
+tests/test_ontology.py::test_add_instance PASSED                         [ 89%]
+tests/test_ontology.py::test_print_tree PASSED                           [ 92%]
+tests/test_ontology.py::test_to_dict_from_dict_roundtrip PASSED          [ 96%]
+tests/test_ontology.py::test_repr PASSED                                 [100%]
+
+============================= 28 passed in 0.26s ==============================
