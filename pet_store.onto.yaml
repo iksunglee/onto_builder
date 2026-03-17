@@ -1,0 +1,47 @@
+ontology:
+  name: Pet Store
+  description: A pet store domain model
+concepts:
+- name: Animal
+  description: A living creature
+  properties:
+  - name: name
+    type: string
+    required: true
+  - name: age
+    type: int
+- name: Dog
+  description: A domestic dog
+  parent: Animal
+  properties:
+  - name: breed
+    type: string
+- name: Cat
+  description: A domestic cat
+  parent: Animal
+- name: Store
+  description: A retail store
+- name: Customer
+  description: A person who buys pets
+  properties:
+  - name: name
+    type: string
+    required: true
+relations:
+- name: sold_at
+  source: Animal
+  target: Store
+- name: buys
+  source: Customer
+  target: Animal
+instances:
+- name: Rex
+  concept: Dog
+  properties:
+    name: Rex
+    breed: Labrador
+- name: Whiskers
+  concept: Cat
+  properties:
+    name: Whiskers
+    age: 3

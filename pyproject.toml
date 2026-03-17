@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ontobuilder"
+version = "0.1.0"
+description = "A beginner-friendly ontology builder"
+requires-python = ">=3.10"
+dependencies = [
+    "networkx>=3.0",
+    "pyyaml>=6.0",
+    "typer[all]>=0.12",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+llm = ["litellm>=1.0", "instructor>=1.0", "pydantic>=2.0"]
+neo4j = ["neo4j>=5.0"]
+web = ["streamlit>=1.30"]
+dev = ["pytest>=8.0", "ruff"]
+
+[project.scripts]
+onto = "ontobuilder.cli.app:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 99

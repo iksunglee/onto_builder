@@ -1,0 +1,9 @@
+title,author,genre,price,isbn,publisher,year,pages,in_stock
+"The Great Gatsby","F. Scott Fitzgerald","Fiction",12.99,"978-0743273565","Scribner",1925,180,true
+"To Kill a Mockingbird","Harper Lee","Fiction",14.99,"978-0061120084","Harper Perennial",1960,281,true
+"1984","George Orwell","Dystopian",11.99,"978-0451524935","Signet Classic",1949,328,true
+"Pride and Prejudice","Jane Austen","Romance",9.99,"978-0141439518","Penguin Classics",1813,279,true
+"The Catcher in the Rye","J.D. Salinger","Fiction",10.99,"978-0316769488","Little Brown",1951,277,false
+"Brave New World","Aldous Huxley","Dystopian",13.99,"978-0060850524","Harper Perennial",1932,288,true
+"The Hobbit","J.R.R. Tolkien","Fantasy",12.99,"978-0547928227","Mariner Books",1937,300,true
+"Fahrenheit 451","Ray Bradbury","Dystopian",11.99,"978-1451673319","Simon & Schuster",1953,158,true
