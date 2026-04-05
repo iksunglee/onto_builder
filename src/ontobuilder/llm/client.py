@@ -42,6 +42,10 @@ def get_api_key() -> str | None:
 
 def is_configured() -> bool:
     """Check if any LLM provider is configured."""
+    # Ensure .env is loaded (may not have been imported yet)
+    from ontobuilder.llm import _load_dotenv
+    _load_dotenv()
+
     if get_provider():
         return True
     if get_api_key():

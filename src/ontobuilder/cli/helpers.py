@@ -24,7 +24,7 @@ def load_current_ontology() -> tuple[Ontology, Path]:
     path = find_onto_file()
     if path is None:
         import typer
-        typer.echo("No .onto.yaml file found. Run 'onto init <name>' first.")
+        typer.echo("No .onto.yaml file found. Run 'ontobuilder init <name>' first.")
         raise typer.Exit(1)
     return load_yaml(path), path
 

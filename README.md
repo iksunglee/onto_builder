@@ -15,9 +15,9 @@ OntoBuilder is a Python toolkit for creating ontologies with concepts, propertie
 
 ### 1. CLI
 
-The installed command is `onto`.
+The installed commands are `ontobuilder` and `onto` (shortcut).
 
-If you prefer, you can also run the module form:
+You can also run the module form:
 
 ```bash
 python -m ontobuilder
@@ -89,25 +89,24 @@ print(onto.print_tree())
 ### CLI Basics
 
 ```bash
-# The CLI command is `onto`
-onto init "Hospital Booking"
-onto concept add Patient --description "A person receiving care"
-onto concept add Surgeon
-onto concept add SurgeryBooking
-onto relation add assigned_surgeon --source SurgeryBooking --target Surgeon
-onto info
-onto owl export --format turtle
-onto owl reason
-onto owl query describe SurgeryBooking
+ontobuilder init "Hospital Booking"
+ontobuilder concept add Patient --description "A person receiving care"
+ontobuilder concept add Surgeon
+ontobuilder concept add SurgeryBooking
+ontobuilder relation add assigned_surgeon --source SurgeryBooking --target Surgeon
+ontobuilder info
+ontobuilder owl export --format turtle
+ontobuilder owl reason
+ontobuilder owl query describe SurgeryBooking
 ```
 
 ### Build From Data
 
 ```bash
-onto tool analyze data.csv
-onto tool suggest data.csv
-onto tool build data.csv
-onto tool build -i data.csv
+ontobuilder tool analyze data.csv
+ontobuilder tool suggest data.csv
+ontobuilder tool build data.csv
+ontobuilder tool build -i data.csv
 ```
 
 What this flow gives you:
@@ -122,15 +121,16 @@ What this flow gives you:
 First configure an LLM provider:
 
 ```bash
-onto configure
+ontobuilder configure
 ```
 
 Then you can use:
 
 ```bash
-onto interview
-onto infer data.csv
-onto workspace data.csv
+ontobuilder interview
+ontobuilder infer data.csv            # AI-powered
+ontobuilder infer data.csv --local    # offline, no API key
+ontobuilder workspace data.csv
 ```
 
 Use these when you want:
@@ -152,26 +152,26 @@ The app includes concept editing, graph visualization, CSV-assisted ontology bui
 
 | Command | What it does |
 |---------|---------------|
-| `onto init` | Create a new ontology file in the current directory |
-| `onto info` | Show summary information about the current ontology |
-| `onto concept add/list/remove` | Manage concepts |
-| `onto relation add/list/remove` | Manage relations |
-| `onto save` / `onto load` | Save or load `.onto.yaml` files |
-| `onto export` | Export to `yaml`, `json`, `prompt`, `jsonld`, `schema-card`, `owl`, or `turtle` |
-| `onto owl export` | Export OWL as RDF/XML or Turtle |
-| `onto owl reason` | Run inference and consistency checks |
-| `onto owl query` | Query classes, instances, relations, descriptions, validation, or paths |
-| `onto tool analyze` | Inspect a data file |
-| `onto tool suggest` | Generate ontology suggestions from data |
-| `onto tool build` | Build an ontology from data |
-| `onto suggest` | Suggest likely next steps for the current ontology |
-| `onto learn` | Show glossary-style explanations of ontology terms |
-| `onto domains list/apply` | List and apply built-in domain templates |
-| `onto configure` | Configure an LLM provider |
-| `onto interview` | Build an ontology through an AI-assisted interview |
-| `onto infer` | Infer an ontology draft from a data file |
-| `onto chat` | Ask questions about the current ontology |
-| `onto workspace` | Open a live AI-assisted ontology workspace |
+| `ontobuilder init` | Create a new ontology file in the current directory |
+| `ontobuilder info` | Show summary information about the current ontology |
+| `ontobuilder concept add/list/remove` | Manage concepts |
+| `ontobuilder relation add/list/remove` | Manage relations |
+| `ontobuilder save` / `ontobuilder load` | Save or load `.onto.yaml` files |
+| `ontobuilder export` | Export to `yaml`, `json`, `prompt`, `jsonld`, `schema-card`, `owl`, or `turtle` |
+| `ontobuilder owl export` | Export OWL as RDF/XML or Turtle |
+| `ontobuilder owl reason` | Run inference and consistency checks |
+| `ontobuilder owl query` | Query classes, instances, relations, descriptions, validation, or paths |
+| `ontobuilder tool analyze` | Inspect a data file |
+| `ontobuilder tool suggest` | Generate ontology suggestions from data |
+| `ontobuilder tool build` | Build an ontology from data |
+| `ontobuilder suggest` | Suggest likely next steps for the current ontology |
+| `ontobuilder learn` | Show glossary-style explanations of ontology terms |
+| `ontobuilder domains list/apply` | List and apply built-in domain templates |
+| `ontobuilder configure` | Configure an LLM provider |
+| `ontobuilder interview` | Build an ontology through an AI-assisted interview |
+| `ontobuilder infer` | Infer an ontology draft from a data file (use `--local` for offline) |
+| `ontobuilder chat` | Ask questions about the current ontology |
+| `ontobuilder workspace` | Open a live AI-assisted ontology workspace |
 
 ## Files You Will See
 
@@ -210,7 +210,7 @@ Example commands:
 
 ```bash
 python examples/quickstart.py
-onto tool build -i examples/hospital_surgery_bookings.csv
+ontobuilder tool build -i examples/hospital_surgery_bookings.csv
 ```
 
 ## Running Tests

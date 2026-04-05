@@ -92,6 +92,7 @@ class InteractiveBuilder:
         table.add_column("Type", style="cyan")
         table.add_column("Unique", justify="right")
         table.add_column("Nulls", justify="right")
+        table.add_column("Samples", style="dim", max_width=40)
         table.add_column("Notes")
 
         for col in profile.columns:
@@ -106,11 +107,17 @@ class InteractiveBuilder:
             if col.null_rate > 0.3:
                 notes.append(f"[red]{col.null_rate:.0%} null[/red]")
 
+            # Show sample values (truncated)
+            samples = ", ".join(s[:20] for s in col.sample_values[:3])
+            if len(col.sample_values) > 3:
+                samples += "..."
+
             table.add_row(
                 col.name,
                 col.inferred_type,
                 str(col.unique_count),
                 str(col.null_count),
+                samples,
                 " | ".join(notes) if notes else "",
             )
 
@@ -120,6 +127,22 @@ class InteractiveBuilder:
             f"\n  [dim]{profile.row_count} rows, {len(profile.columns)} columns, "
             f"suggested concept: [bold]{profile.suggested_concept_name}[/bold][/dim]"
         )
+
+        # Show data cleaning suggestions
+        if profile.cleaning_suggestions:
+            self.console.print(
+                Panel(
+                    "[bold]Data Cleaning Suggestions[/bold]",
+                    border_style="yellow",
+                )
+            )
+            for cs in profile.cleaning_suggestions:
+                self.console.print(
+                    f"  [yellow]![/yellow] [bold]{cs.column}[/bold]: {cs.description}"
+                )
+                self.console.print(f"    → {cs.suggestion}")
+                if cs.sample:
+                    self.console.print(f"    [dim]e.g. {cs.sample}[/dim]")
 
     # ---- Step 3: Concepts ----
 

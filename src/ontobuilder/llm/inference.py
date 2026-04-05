@@ -146,6 +146,63 @@ def _infer_local(path: Path) -> Ontology | None:
     return builder.run(str(path))
 
 
+def _show_data_overview(path: Path) -> None:
+    """Show data analysis and cleaning suggestions before LLM inference."""
+    from rich import print as rprint
+    from rich.table import Table
+    from rich.panel import Panel
+
+    try:
+        from ontobuilder.tool.analyzer import DataAnalyzer
+        analyzer = DataAnalyzer()
+        profile = analyzer.analyze(str(path))
+    except (ValueError, FileNotFoundError):
+        return  # text files or missing files — skip analysis
+
+    table = Table(title=f"Data Breakdown: {path.name}")
+    table.add_column("Column", style="bold")
+    table.add_column("Type", style="cyan")
+    table.add_column("Unique", justify="right")
+    table.add_column("Nulls", justify="right")
+    table.add_column("Samples", style="dim", max_width=40)
+    table.add_column("Role")
+
+    for col in profile.columns:
+        role = ""
+        if col.is_id_like:
+            role = "ID"
+        elif col.is_foreign_key:
+            ref = f" → {col.referenced_entity}" if col.referenced_entity else ""
+            role = f"FK{ref}"
+        elif col.is_categorical:
+            role = f"Category ({col.unique_count})"
+
+        samples = ", ".join(s[:20] for s in col.sample_values[:3])
+
+        table.add_row(
+            col.name,
+            col.inferred_type,
+            str(col.unique_count),
+            str(col.null_count),
+            samples,
+            role,
+        )
+
+    rprint(table)
+    rprint(
+        f"  [dim]{profile.row_count} rows, {len(profile.columns)} columns[/dim]\n"
+    )
+
+    if profile.cleaning_suggestions:
+        rprint(Panel("[bold yellow]Data Cleaning Suggestions[/bold yellow]", border_style="yellow"))
+        for cs in profile.cleaning_suggestions:
+            rprint(f"  [yellow]![/yellow] [bold]{cs.column}[/bold]: {cs.description}")
+            rprint(f"    → {cs.suggestion}")
+            if cs.sample:
+                rprint(f"    [dim]e.g. {cs.sample}[/dim]")
+        rprint()
+
+
 def _infer_llm(path: Path) -> Ontology | None:
     """Infer ontology using LLM — with per-node review and edit loop."""
     from rich import print as rprint
@@ -155,16 +212,14 @@ def _infer_llm(path: Path) -> Ontology | None:
     from ontobuilder.llm.schemas import OntologySuggestion
     from ontobuilder.llm.prompts import infer_prompt
 
-    rprint(f"\n[bold]Analyzing data with AI: {path.name}[/bold]\n")
+    rprint(f"\n[bold]Analyzing data: {path.name}[/bold]\n")
+
+    # Show detailed data breakdown first
+    _show_data_overview(path)
 
     sample = read_sample_data(path)
-    rprint("[dim]Sample data:[/dim]")
-    for line in sample.split("\n")[:10]:
-        rprint(f"  {line}")
-    if sample.count("\n") > 10:
-        rprint(f"  ... ({sample.count(chr(10)) - 10} more lines)")
 
-    rprint("\n[bold]Inferring ontology structure...[/bold]\n")
+    rprint("[bold]Sending to AI for ontology inference...[/bold]\n")
 
     suggestion: OntologySuggestion = chat(
         infer_prompt(sample),

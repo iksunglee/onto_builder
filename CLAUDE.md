@@ -21,22 +21,23 @@ When the MCP server is registered, you have direct access to these tools:
 
 ## CLI Commands
 
-The `onto` CLI is also available:
+Both `ontobuilder` and `onto` work as the CLI command:
 
 ```bash
-onto init <name>           # Create ontology
-onto info                  # Show summary
-onto configure             # Set up LLM provider (OpenAI, Anthropic, Ollama, custom)
-onto interview             # AI-guided ontology builder
-onto infer <file>          # Infer ontology from data (CSV, JSON)
-onto workspace [file]      # Interactive workspace with chat
-onto chat                  # Chat about your ontology
-onto export -f <format>    # Export (yaml/json/owl/turtle/jsonld/prompt/schema-card)
-onto concept add/list/remove
-onto relation add/list/remove
-onto owl export/reason/query
-onto suggest               # Get next-step suggestions
-onto learn <term>          # Ontology glossary
+ontobuilder init <name>           # Create ontology
+ontobuilder info                  # Show summary
+ontobuilder configure             # Set up LLM provider (OpenAI, Anthropic, Ollama, custom)
+ontobuilder interview             # AI-guided ontology builder
+ontobuilder infer <file>          # Infer ontology from data (CSV, JSON)
+ontobuilder infer <file> --local  # Local inference (no API key needed)
+ontobuilder workspace [file]      # Interactive workspace with chat
+ontobuilder chat                  # Chat about your ontology
+ontobuilder export -f <format>    # Export (yaml/json/owl/turtle/jsonld/prompt/schema-card)
+ontobuilder concept add/list/remove
+ontobuilder relation add/list/remove
+ontobuilder owl export/reason/query
+ontobuilder suggest               # Get next-step suggestions
+ontobuilder learn <term>          # Ontology glossary
 ```
 
 ## Python API
@@ -57,7 +58,7 @@ The working file is `ontology.onto.yaml` in the project root. All tools read/wri
 
 ## LLM Configuration
 
-Run `onto configure` to set up the AI provider. Supports:
+Run `ontobuilder configure` to set up the AI provider. Supports:
 - **OpenAI** (gpt-4o-mini, gpt-4o)
 - **Anthropic** (Claude Sonnet, Haiku, Opus) — requires `pip install ontobuilder[llm]`
 - **Local models** (Ollama, LM Studio) — free, no API key

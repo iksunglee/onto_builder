@@ -7,7 +7,7 @@ from ontobuilder.cli.relation_cmds import relation_app
 from ontobuilder.cli.tool_cmds import tool_app
 
 app = typer.Typer(
-    name="onto",
+    name="ontobuilder",
     help="OntoBuilder - A beginner-friendly ontology builder.",
     no_args_is_help=True,
 )
@@ -255,7 +255,7 @@ def _ensure_llm_configured() -> bool:
             "[bold yellow]No LLM provider configured.[/bold yellow]\n\n"
             "OntoBuilder needs an AI model to power interviews, inference, and chat.\n"
             "You can use a cloud API (OpenAI, Claude) or a free local model (Ollama).\n\n"
-            "Run [bold]onto configure[/bold] or set up now:",
+            "Run [bold]ontobuilder configure[/bold] or set up now:",
             title="Setup Required",
             border_style="yellow",
         )
@@ -264,7 +264,7 @@ def _ensure_llm_configured() -> bool:
     if Confirm.ask("Set up LLM provider now?", default=True):
         return _run_provider_wizard()
 
-    rprint("[dim]Run 'onto configure' when you're ready.[/dim]")
+    rprint("[dim]Run 'ontobuilder configure' when you're ready.[/dim]")
     return False
 
 
@@ -381,7 +381,7 @@ def init(
     path = existing if existing and force else Path(DEFAULT_FILE)
     save_yaml(onto, path)
     typer.echo(f"Created '{path}' - ontology '{name}' is ready!")
-    typer.echo("Next: try 'onto concept add Animal --description \"A living creature\"'")
+    typer.echo("Next: try 'ontobuilder concept add Animal --description \"A living creature\"'")
 
 
 @app.command()
@@ -632,10 +632,10 @@ def infer(
     Uses AI by default; use --local for fast offline analysis (CSV/JSON files only).
 
     Examples:
-      onto infer data.csv --local
-      onto infer data.json
-      onto infer --text "name,age,role\\nAlice,30,Engineer\\nBob,25,Designer"
-      cat data.csv | onto infer --stdin
+      ontobuilder infer data.csv --local
+      ontobuilder infer data.json
+      ontobuilder infer --text "name,age,role\\nAlice,30,Engineer\\nBob,25,Designer"
+      cat data.csv | ontobuilder infer --stdin
     """
     import sys
     import tempfile
@@ -665,7 +665,7 @@ def infer(
         tmp.close()
         file = tmp.name
     elif file is None:
-        typer.echo("Provide a file path, --text, or --stdin. See: onto infer --help")
+        typer.echo("Provide a file path, --text, or --stdin. See: ontobuilder infer --help")
         raise typer.Exit(1)
 
     if not local and not _ensure_llm_configured():
@@ -777,7 +777,7 @@ def owl_query(
         result = engine.find_path(name, target)
     else:
         typer.echo(
-            "Usage: onto owl query <classes|instances|relations|describe|validate|path> [name] [options]"
+            "Usage: ontobuilder owl query <classes|instances|relations|describe|validate|path> [name] [options]"
         )
         raise typer.Exit(1)
 

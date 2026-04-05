@@ -112,11 +112,47 @@ class SuggestionEngine:
 
     # ---- internal suggestion generators ----
 
+    # Common attribute suffixes that indicate a column belongs to an FK entity
+    _ENTITY_ATTR_SUFFIXES = (
+        "name", "email", "phone", "address", "title", "type", "code",
+        "tier", "level", "rating", "score", "url", "description",
+    )
+
+    def _is_entity_attribute(self, col_name: str, entity_prefix: str) -> str | None:
+        """Check if col_name is an attribute of an FK entity.
+
+        Returns the short attribute name (e.g., 'name' from 'customer_name') or None.
+        """
+        col_lower = col_name.lower()
+        prefix = entity_prefix.lower()
+        if col_lower.startswith(prefix + "_"):
+            attr = col_lower[len(prefix) + 1:]
+            if attr in self._ENTITY_ATTR_SUFFIXES:
+                return col_name[len(prefix) + 1:]
+        return None
+
     def _main_concept(self, profile: DataProfile) -> ConceptSuggestion:
-        """Build the main concept from property columns."""
+        """Build the main concept from property columns.
+
+        Properties that clearly belong to a FK entity (e.g., customer_name
+        when customer_id exists) are excluded here and distributed to FK
+        concepts instead.
+        """
+        fk_prefixes = set()
+        for col in profile.fk_columns:
+            if col.referenced_entity:
+                fk_prefixes.add(col.referenced_entity)
+
         props = []
         for col in profile.property_columns:
-            if not col.is_categorical:
+            if col.is_categorical:
+                continue
+            # Check if this property belongs to a FK entity
+            belongs_to_fk = any(
+                self._is_entity_attribute(col.name, prefix) is not None
+                for prefix in fk_prefixes
+            )
+            if not belongs_to_fk:
                 props.append(Property(
                     name=col.name,
                     data_type=col.inferred_type,
@@ -130,26 +166,66 @@ class SuggestionEngine:
         )
 
     def _fk_concepts(self, profile: DataProfile, main_name: str) -> list[ConceptSuggestion]:
-        """Create concept stubs for each foreign key reference."""
+        """Create concepts for each foreign key reference, with distributed properties."""
         concepts = []
-        seen = set()
+        seen: dict[str, ConceptSuggestion] = {}
+
+        # First pass: create FK concepts
         for col in profile.fk_columns:
             entity = col.referenced_entity
             if entity and entity != main_name and entity not in seen:
-                seen.add(entity)
-                concepts.append(ConceptSuggestion(
+                cs = ConceptSuggestion(
                     name=entity,
                     description=f"Referenced entity (via {col.name})",
                     source="foreign_key",
-                ))
+                )
+                seen[entity] = cs
+                concepts.append(cs)
+
+        # Second pass: distribute properties from the main data to FK entities
+        # e.g., customer_name, customer_email → Customer.name, Customer.email
+        for col in profile.property_columns:
+            if col.is_categorical or col.is_id_like or col.is_foreign_key:
+                continue
+            for entity_name, cs in seen.items():
+                short_name = self._is_entity_attribute(col.name, entity_name)
+                if short_name:
+                    cs.properties.append(Property(
+                        name=short_name,
+                        data_type=col.inferred_type,
+                        required=(col.null_count == 0),
+                    ))
+                    break
+
         return concepts
 
     def _categorical_concepts(self, profile: DataProfile, main_name: str) -> list[ConceptSuggestion]:
         """Create concepts from categorical columns with few unique values."""
+        # Skip columns already covered by FK concepts
+        fk_entities = {c.referenced_entity for c in profile.fk_columns if c.referenced_entity}
+        fk_col_names = {c.name for c in profile.fk_columns}
+
         concepts = []
         for col in profile.categorical_columns:
+            # Skip if this column is itself a FK or its concept matches a FK entity
+            if col.name in fk_col_names or col.is_foreign_key:
+                continue
             concept_name = _col_to_concept_name(col.name)
-            if concept_name == main_name:
+            if concept_name == main_name or concept_name in fk_entities:
+                continue
+            # Skip if column name matches a FK entity property pattern
+            # e.g., supplier_name → Supplier, but NOT order_status → Order
+            col_lower = col.name.lower()
+            _attr_names = ("name", "email", "phone", "address", "title", "type", "code")
+            belongs_to_fk = False
+            for e in fk_entities:
+                prefix = e.lower()
+                if col_lower.startswith(prefix + "_"):
+                    attr = col_lower[len(prefix) + 1:]
+                    if attr in _attr_names:
+                        belongs_to_fk = True
+                        break
+            if belongs_to_fk:
                 continue
             desc = f"Category with {col.unique_count} values: {', '.join(col.categories[:5])}"
             if len(col.categories) > 5:
@@ -259,17 +335,22 @@ class SuggestionEngine:
         if not profile.fk_columns and not profile.nested_objects:
             notes.append("No foreign keys or nested objects detected - this may be a flat dataset")
 
+        # Include data cleaning suggestions
+        for cs in profile.cleaning_suggestions:
+            notes.append(f"[Cleaning] {cs.column}: {cs.suggestion}")
+
         return notes
 
 
 def _col_to_concept_name(col_name: str) -> str:
     """Convert column name to PascalCase concept name."""
     import re
+    _KEEP_S = ("ss", "us", "is")
     parts = re.split(r"[_\-\s]+", col_name.strip())
     result = []
     for p in parts:
         word = p.capitalize()
-        if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        if len(word) > 3 and word.endswith("s") and not any(word.endswith(x) for x in _KEEP_S):
             word = word[:-1]
         result.append(word)
     return "".join(result) if result else "Thing"
