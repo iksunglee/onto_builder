@@ -612,24 +612,66 @@ def interview(
 
 @app.command()
 def infer(
-    file: str = typer.Argument(..., help="Path to data file (CSV, JSON, or text)"),
+    file: str = typer.Argument(None, help="Path to data file (CSV, JSON, or text)"),
     local: bool = typer.Option(
         False, "--local", "-l",
         help="Use local heuristic analysis (no LLM or API key needed)",
     ),
+    text: str = typer.Option(
+        None, "--text", "-t",
+        help="Inline text/data to infer from (instead of a file)",
+    ),
+    stdin: bool = typer.Option(
+        False, "--stdin",
+        help="Read data from stdin (pipe or paste, end with Ctrl+D)",
+    ),
 ):
-    """Infer an ontology structure from a data file.
+    """Infer an ontology structure from data.
 
-    By default uses AI for rich semantic inference.
-    Use --local for fast, offline analysis with no API key required.
+    Provide data as a file path, inline text, or via stdin.
+    Uses AI by default; use --local for fast offline analysis (CSV/JSON files only).
+
+    Examples:
+      onto infer data.csv --local
+      onto infer data.json
+      onto infer --text "name,age,role\\nAlice,30,Engineer\\nBob,25,Designer"
+      cat data.csv | onto infer --stdin
     """
+    import sys
+    import tempfile
+    from pathlib import Path
+
+    from ontobuilder.serialization.yaml_io import save_yaml
+    from ontobuilder.cli.helpers import DEFAULT_FILE
+
+    # Resolve input source
+    if text:
+        # Write inline text to a temp file so the inference pipeline can read it
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".csv", delete=False, encoding="utf-8"
+        )
+        tmp.write(text.replace("\\n", "\n"))
+        tmp.close()
+        file = tmp.name
+    elif stdin:
+        data = sys.stdin.read()
+        if not data.strip():
+            typer.echo("No data received on stdin.")
+            raise typer.Exit(1)
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".csv", delete=False, encoding="utf-8"
+        )
+        tmp.write(data)
+        tmp.close()
+        file = tmp.name
+    elif file is None:
+        typer.echo("Provide a file path, --text, or --stdin. See: onto infer --help")
+        raise typer.Exit(1)
+
     if not local and not _ensure_llm_configured():
         raise typer.Exit(1)
 
     from ontobuilder.llm.inference import infer_ontology
-    from ontobuilder.serialization.yaml_io import save_yaml
-    from ontobuilder.cli.helpers import DEFAULT_FILE
-    from pathlib import Path
 
     onto = infer_ontology(file, local=local)
     if onto is None:

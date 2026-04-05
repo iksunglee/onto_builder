@@ -1,6 +1,6 @@
 """OntoBuilder — A beginner-friendly ontology builder."""
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 from ontobuilder.core.model import Concept, Property, Relation, Instance
 from ontobuilder.core.ontology import Ontology

@@ -135,72 +135,21 @@ def infer_ontology(file_path: str | Path, *, local: bool = False) -> Ontology | 
 
 
 def _infer_local(path: Path) -> Ontology | None:
-    """Infer ontology using local heuristic analysis — no LLM required."""
-    from rich import print as rprint
-    from rich.prompt import Confirm
-    from rich.panel import Panel
+    """Infer ontology using local heuristic analysis — no LLM required.
 
-    from ontobuilder.tool.analyzer import DataAnalyzer
-    from ontobuilder.tool.suggestions import SuggestionEngine
+    Delegates to InteractiveBuilder which lets users review and edit
+    every concept, property, and relation before building.
+    """
+    from ontobuilder.tool.interactive import InteractiveBuilder
 
-    rprint(f"\n[bold]Analyzing data locally: {path.name}[/bold]\n")
-
-    analyzer = DataAnalyzer()
-    try:
-        profile = analyzer.analyze(str(path))
-    except (FileNotFoundError, ValueError) as e:
-        rprint(f"[red]Error: {e}[/red]")
-        return None
-
-    engine = SuggestionEngine()
-    suggestions = engine.suggest(profile)
-
-    # Show what we found
-    rprint(Panel(
-        f"[bold]{profile.row_count}[/bold] rows, "
-        f"[bold]{len(profile.columns)}[/bold] columns\n"
-        f"Suggested main concept: [bold]{profile.suggested_concept_name}[/bold]",
-        title=f"Data Profile: {path.name}",
-        border_style="blue",
-    ))
-
-    rprint("[bold]Concepts:[/bold]")
-    for cs in suggestions.concepts:
-        source_label = {
-            "main": "data file", "foreign_key": "foreign key",
-            "categorical": "category", "nested": "nested object",
-        }.get(cs.source, cs.source)
-        props = ", ".join(f"{p.name}:{p.data_type}" for p in cs.properties)
-        rprint(f"  - [bold]{cs.name}[/bold] [dim]({source_label})[/dim]"
-               + (f"  [{props}]" if props else ""))
-
-    if suggestions.relations:
-        rprint("\n[bold]Relations:[/bold]")
-        for rs in suggestions.relations:
-            rprint(f"  - {rs.name}: {rs.source} → {rs.target}  ({rs.cardinality})")
-
-    if suggestions.notes:
-        rprint("\n[bold]Notes:[/bold]")
-        for note in suggestions.notes:
-            rprint(f"  [dim]{note}[/dim]")
-
-    if not Confirm.ask("\nApply this ontology structure?", default=True):
-        rprint("Cancelled.")
-        return None
-
-    onto_name = profile.suggested_concept_name + "Ontology"
-    onto = engine.build_ontology(suggestions, onto_name)
-
-    rprint("\n[bold green]Ontology built from data![/bold green]\n")
-    rprint(onto.print_tree())
-
-    return onto
+    builder = InteractiveBuilder()
+    return builder.run(str(path))
 
 
 def _infer_llm(path: Path) -> Ontology | None:
-    """Infer ontology using LLM for richer semantic analysis."""
+    """Infer ontology using LLM — with per-node review and edit loop."""
     from rich import print as rprint
-    from rich.prompt import Confirm
+    from rich.prompt import Confirm, Prompt
 
     from ontobuilder.llm.client import chat
     from ontobuilder.llm.schemas import OntologySuggestion
@@ -224,25 +173,147 @@ def _infer_llm(path: Path) -> Ontology | None:
 
     rprint(f"[bold]Suggested ontology: {suggestion.name}[/bold]")
     if suggestion.description:
-        rprint(f"  {suggestion.description}\n")
+        rprint(f"  {suggestion.description}")
 
-    rprint("[bold]Concepts:[/bold]")
+    # Step 1: Review concepts one by one
+    rprint("\n[bold]Review concepts:[/bold]")
+    confirmed_concepts = []
     for c in suggestion.concepts:
         parent = f" (child of {c.parent})" if c.parent else ""
         props = ", ".join(f"{p.name}:{p.data_type}" for p in c.properties)
-        rprint(f"  - {c.name}{parent}" + (f"  [{props}]" if props else ""))
+        rprint(f"\n  [bold]{c.name}[/bold]{parent}")
+        if c.description:
+            rprint(f"  {c.description}")
+        if props:
+            rprint(f"  Properties: {props}")
 
-    rprint("\n[bold]Relations:[/bold]")
-    for r in suggestion.relations:
-        rprint(f"  - {r.name}: {r.source} → {r.target}")
+        if Confirm.ask("  Include?", default=True):
+            new_name = Prompt.ask("  Name", default=c.name)
+            c.name = new_name
+            confirmed_concepts.append(c)
 
-    if not Confirm.ask("\nApply this ontology structure?", default=True):
-        rprint("Cancelled.")
+    if not confirmed_concepts:
+        rprint("[yellow]No concepts accepted. Aborting.[/yellow]")
         return None
 
+    # Step 2: Review relations
+    confirmed_names = {c.name for c in confirmed_concepts}
+    valid_relations = [
+        r for r in suggestion.relations
+        if r.source in confirmed_names and r.target in confirmed_names
+    ]
+
+    confirmed_relations = []
+    if valid_relations:
+        rprint("\n[bold]Review relations:[/bold]")
+        for r in valid_relations:
+            rprint(f"\n  [bold]{r.source}[/bold] --[{r.name}]--> [bold]{r.target}[/bold]")
+            if Confirm.ask("  Include?", default=True):
+                new_name = Prompt.ask("  Name", default=r.name)
+                r.name = new_name
+                confirmed_relations.append(r)
+
+    # Build with confirmed items
+    suggestion.concepts = confirmed_concepts
+    suggestion.relations = confirmed_relations
     onto = build_ontology_from_suggestion(suggestion)
 
-    rprint("\n[bold green]Ontology built from data![/bold green]\n")
+    # Step 3: Edit loop
+    rprint("\n[bold green]Ontology built![/bold green]\n")
     rprint(onto.print_tree())
+    onto = _edit_loop(onto)
+
+    return onto
+
+
+def _edit_loop(onto: Ontology) -> Ontology:
+    """Let users add/remove concepts, properties, relations after initial build."""
+    from rich import print as rprint
+    from rich.prompt import Prompt
+
+    rprint(
+        "\n[dim]Commands: add-concept, add-property, add-relation, "
+        "remove-concept, remove-relation, tree, done[/dim]"
+    )
+
+    while True:
+        try:
+            cmd = Prompt.ask("\n  Edit", default="done")
+        except (EOFError, KeyboardInterrupt):
+            break
+
+        if cmd == "done":
+            break
+        elif cmd == "tree":
+            rprint(f"\n{onto.print_tree()}")
+        elif cmd == "add-concept":
+            name = Prompt.ask("  Concept name")
+            desc = Prompt.ask("  Description", default="")
+            parent_choices = ["(none)"] + list(onto.concepts.keys())
+            parent = Prompt.ask("  Parent", choices=parent_choices, default="(none)")
+            try:
+                onto.add_concept(
+                    name, description=desc,
+                    parent=parent if parent != "(none)" else None,
+                )
+                rprint(f"  [green]Added: {name}[/green]")
+            except Exception as e:
+                rprint(f"  [red]{e}[/red]")
+        elif cmd == "add-property":
+            concepts = list(onto.concepts.keys())
+            if not concepts:
+                rprint("  [yellow]No concepts yet.[/yellow]")
+                continue
+            concept = Prompt.ask("  On concept", choices=concepts)
+            name = Prompt.ask("  Property name")
+            dtype = Prompt.ask(
+                "  Type",
+                choices=["string", "int", "float", "bool", "date"],
+                default="string",
+            )
+            try:
+                onto.add_property(concept, name, data_type=dtype)
+                rprint(f"  [green]Added: {name} ({dtype}) on {concept}[/green]")
+            except Exception as e:
+                rprint(f"  [red]{e}[/red]")
+        elif cmd == "add-relation":
+            concepts = list(onto.concepts.keys())
+            if len(concepts) < 2:
+                rprint("  [yellow]Need at least 2 concepts.[/yellow]")
+                continue
+            name = Prompt.ask("  Relation name")
+            source = Prompt.ask("  Source", choices=concepts)
+            target = Prompt.ask("  Target", choices=concepts)
+            card = Prompt.ask(
+                "  Cardinality",
+                choices=["one-to-one", "one-to-many", "many-to-one", "many-to-many"],
+                default="many-to-one",
+            )
+            try:
+                onto.add_relation(name, source=source, target=target, cardinality=card)
+                rprint(f"  [green]Added: {source} --[{name}]--> {target}[/green]")
+            except Exception as e:
+                rprint(f"  [red]{e}[/red]")
+        elif cmd == "remove-concept":
+            concepts = list(onto.concepts.keys())
+            if not concepts:
+                rprint("  [yellow]No concepts to remove.[/yellow]")
+                continue
+            name = Prompt.ask("  Remove concept", choices=concepts)
+            onto.remove_concept(name)
+            rprint(f"  [red]Removed: {name}[/red]")
+        elif cmd == "remove-relation":
+            rels = list(onto.relations.keys())
+            if not rels:
+                rprint("  [yellow]No relations to remove.[/yellow]")
+                continue
+            name = Prompt.ask("  Remove relation", choices=rels)
+            onto.remove_relation(name)
+            rprint(f"  [red]Removed: {name}[/red]")
+        else:
+            rprint(
+                "  [dim]Unknown command. Try: add-concept, add-property, "
+                "add-relation, remove-concept, remove-relation, tree, done[/dim]"
+            )
 
     return onto
