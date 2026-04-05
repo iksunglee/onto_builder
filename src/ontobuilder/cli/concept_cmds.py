@@ -51,8 +51,8 @@ def list_concepts(
         table.add_column("Description")
         table.add_column("Properties")
         for c in onto.concepts.values():
-            props = ", ".join(p.name for p in c.properties) if c.properties else "—"
-            table.add_row(c.name, c.parent or "—", c.description or "—", props)
+            props = ", ".join(p.name for p in c.properties) if c.properties else "-"
+            table.add_row(c.name, c.parent or "-", c.description or "-", props)
         rprint(table)
 
 

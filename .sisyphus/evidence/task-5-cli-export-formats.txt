@@ -1,9 +1,0 @@
-CLI export format verification (Task 5)
-
-Workspace: .sisyphus/evidence/task-5-cli/workspace
-Created files:
-- ontology.prompt.txt
-- ontology.jsonld
-- ontology.schema-card.json
-
-Result: PASS

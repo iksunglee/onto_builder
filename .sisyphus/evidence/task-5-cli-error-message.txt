@@ -1,9 +1,0 @@
-Invalid format output verification (Task 5)
-
-Observed output:
-Unknown format: invalid. Use 'yaml', 'json', 'prompt', 'jsonld', or 'schema-card'.
-
-Help text includes:
-Export format: yaml, json, prompt, jsonld, or schema-card
-
-Result: PASS

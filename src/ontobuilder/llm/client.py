@@ -1,4 +1,15 @@
-"""LLM client abstraction using litellm + instructor."""
+"""LLM client abstraction — auto-selects the best available backend.
+
+Priority:
+1. litellm + instructor (if installed) — supports many providers
+2. openai SDK (if installed) — direct OpenAI API
+3. Raises ImportError with install instructions
+
+Configuration (env vars):
+    OPENAI_API_KEY or ONTOBUILDER_API_KEY — API key
+    ONTOBUILDER_LLM_MODEL — model name (default: gpt-4o-mini)
+    ONTOBUILDER_LLM_BACKEND — force backend: "litellm" or "openai"
+"""
 
 from __future__ import annotations
 
@@ -18,8 +29,35 @@ def get_api_key() -> str | None:
     return os.environ.get("ONTOBUILDER_API_KEY") or os.environ.get("OPENAI_API_KEY")
 
 
+def _get_backend() -> str:
+    """Detect which backend to use."""
+    forced = os.environ.get("ONTOBUILDER_LLM_BACKEND", "").lower()
+    if forced in ("litellm", "openai"):
+        return forced
+
+    # Auto-detect: prefer litellm if available, fall back to openai
+    try:
+        import instructor  # noqa: F401
+        import litellm  # noqa: F401
+        return "litellm"
+    except ImportError:
+        pass
+
+    try:
+        import openai  # noqa: F401
+        return "openai"
+    except ImportError:
+        pass
+
+    raise ImportError(
+        "No LLM backend found. Install one of:\n"
+        "  pip install openai                    # lightweight, OpenAI only\n"
+        "  pip install ontobuilder[llm]          # litellm + instructor, multi-provider"
+    )
+
+
 def create_client():
-    """Create an instructor-patched LLM client."""
+    """Create an instructor-patched LLM client (litellm backend only)."""
     try:
         import instructor
         from litellm import completion
@@ -39,9 +77,17 @@ def chat(
 ) -> T | str:
     """Send a chat completion request.
 
+    Auto-selects the best available backend (litellm or openai).
     If response_model is provided, returns a structured (Pydantic) object.
     Otherwise returns the raw text response.
     """
+    backend = _get_backend()
+
+    if backend == "openai":
+        from ontobuilder.llm.openai_client import chat as openai_chat
+        return openai_chat(messages, response_model=response_model, **kwargs)
+
+    # litellm backend
     model = kwargs.pop("model", get_model())
 
     if response_model is not None:

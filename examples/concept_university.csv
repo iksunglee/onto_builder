@@ -1,0 +1,21 @@
+id,name,type,department,parent_id,has_prerequisite,credits,semester,instructor_id,capacity
+1,Introduction to CS,Course,Computer Science,,,,Fall 2024,101,150
+2,Data Structures,Course,Computer Science,1,Introduction to CS,3,Spring 2025,102,120
+3,Algorithms,Course,Computer Science,2,Data Structures,3,Fall 2025,101,100
+4,Database Systems,Course,Computer Science,1,Introduction to CS,3,Spring 2025,103,90
+5,Machine Learning,Course,Computer Science,3,Algorithms,4,Spring 2026,104,60
+6,Computer Science,Department,Engineering,,,,,
+7,Engineering,Faculty,,,,,,
+8,Dr. Smith,Instructor,Computer Science,,,,,
+9,Dr. Lee,Instructor,Computer Science,,,,,
+10,Dr. Park,Instructor,Computer Science,,,,,
+11,Dr. Kim,Instructor,Computer Science,,,,,
+12,Lecture Hall A,Room,,,,,,200
+13,Lab Room 101,Room,,,,,,40
+14,Alice,Student,Computer Science,,,,,
+15,Bob,Student,Computer Science,,,,,
+16,Charlie,Student,Computer Science,,,,,
+17,Alice-DataStructures,Enrollment,,,,,,
+18,Bob-Algorithms,Enrollment,,,,,,
+19,Charlie-ML,Enrollment,,,,,,
+20,Midterm Exam,Assessment,,,,,Fall 2024,,

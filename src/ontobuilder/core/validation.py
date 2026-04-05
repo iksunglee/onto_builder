@@ -2,34 +2,29 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ontobuilder.core.ontology import Ontology
+from typing import Any
 
 
 class ValidationError(Exception):
     """Raised when ontology data is invalid."""
 
 
-def validate_concept_name_unique(onto: Ontology, name: str) -> None:
+def validate_concept_name_unique(onto: Any, name: str) -> None:
     if name in onto.concepts:
         raise ValidationError(f"Concept '{name}' already exists.")
 
 
-def validate_relation_name_unique(onto: Ontology, name: str) -> None:
+def validate_relation_name_unique(onto: Any, name: str) -> None:
     if name in onto.relations:
         raise ValidationError(f"Relation '{name}' already exists.")
 
 
-def validate_parent_exists(onto: Ontology, parent: str) -> None:
+def validate_parent_exists(onto: Any, parent: str) -> None:
     if parent not in onto.concepts:
-        raise ValidationError(
-            f"Parent concept '{parent}' does not exist. Add it first."
-        )
+        raise ValidationError(f"Parent concept '{parent}' does not exist. Add it first.")
 
 
-def validate_concept_exists(onto: Ontology, name: str) -> None:
+def validate_concept_exists(onto: Any, name: str) -> None:
     if name not in onto.concepts:
         raise ValidationError(f"Concept '{name}' does not exist.")
 

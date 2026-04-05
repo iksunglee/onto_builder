@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OWL Ontology Scenarios for LLMs</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0f14;
+  --surface: #13151c;
+  --surface2: #1a1d27;
+  --surface3: #20243300;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text: #e8eaf0;
+  --text2: #8a8fa8;
+  --text3: #555a72;
+  --purple: #8b7ff5;
+  --purple-bg: rgba(139,127,245,0.1);
+  --purple-border: rgba(139,127,245,0.25);
+  --teal: #38c9a0;
+  --teal-bg: rgba(56,201,160,0.1);
+  --amber: #f0a04a;
+  --amber-bg: rgba(240,160,74,0.1);
+  --red: #f06464;
+  --red-bg: rgba(240,100,100,0.1);
+  --green: #5dbe7a;
+  --green-bg: rgba(93,190,122,0.1);
+  --blue: #5a9ef0;
+  --blue-bg: rgba(90,158,240,0.1);
+  --coral: #e8775a;
+  --coral-bg: rgba(232,119,90,0.1);
+  --gray-bg: rgba(138,143,168,0.1);
+  --mono: 'DM Mono', monospace;
+  --sans: 'Sora', sans-serif;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+header {
+  padding: 32px 32px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.header-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.05em;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  height: calc(100vh - 73px);
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sc-btn {
+  all: unset;
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border: 1px solid transparent;
+}
+.sc-btn:hover { background: var(--surface2); }
+.sc-btn.active {
+  background: var(--purple-bg);
+  border-color: var(--purple-border);
+}
+.sc-btn .num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-bottom: 3px;
+}
+.sc-btn .sc-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  line-height: 1.4;
+}
+.sc-btn .sc-owl {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+.sc-btn.active .num, .sc-btn.active .sc-owl { color: var(--purple); opacity: 0.7; }
+.sc-btn.active .sc-title { color: var(--purple); }
+
+.content {
+  overflow-y: auto;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.owl-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+}
+
+.desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.7;
+  max-width: 720px;
+}
+
+.svg-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.col-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.steps { display: flex; flex-direction: column; gap: 8px; }
+
+.step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.step-dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.dot-q { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(240,160,74,0.25); }
+.dot-r { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(90,158,240,0.25); }
+.dot-ok { background: var(--green-bg); color: var(--green); border: 1px solid rgba(93,190,122,0.25); }
+.dot-err { background: var(--red-bg); color: var(--red); border: 1px solid rgba(240,100,100,0.25); }
+
+.step-text {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  padding-top: 2px;
+}
+.step-text code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--surface2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--teal);
+}
+
+.outcome {
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+.outcome-ok { background: var(--green-bg); border: 1px solid rgba(93,190,122,0.2); color: var(--green); }
+.outcome-warn { background: var(--amber-bg); border: 1px solid rgba(240,160,74,0.2); color: var(--amber); }
+.outcome-err { background: var(--red-bg); border: 1px solid rgba(240,100,100,0.2); color: var(--red); }
+
+.prompt-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--purple);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.7;
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* SVG overrides for dark bg */
+.svg-wrap svg text { fill: #8a8fa8; }
+.svg-wrap svg .node-purple rect { fill: rgba(139,127,245,0.12); stroke: rgba(139,127,245,0.3); }
+.svg-wrap svg .node-purple text { fill: #a89ff7; }
+.svg-wrap svg .node-teal rect { fill: rgba(56,201,160,0.12); stroke: rgba(56,201,160,0.3); }
+.svg-wrap svg .node-teal text { fill: #38c9a0; }
+.svg-wrap svg .node-amber rect { fill: rgba(240,160,74,0.12); stroke: rgba(240,160,74,0.3); }
+.svg-wrap svg .node-amber text { fill: #f0a04a; }
+.svg-wrap svg .node-gray rect { fill: rgba(138,143,168,0.1); stroke: rgba(138,143,168,0.25); }
+.svg-wrap svg .node-gray text { fill: #6e738f; }
+.svg-wrap svg .node-coral rect { fill: rgba(232,119,90,0.12); stroke: rgba(232,119,90,0.3); }
+.svg-wrap svg .node-coral text { fill: #e8775a; }
+.svg-wrap svg .node-green rect { fill: rgba(93,190,122,0.12); stroke: rgba(93,190,122,0.3); }
+.svg-wrap svg .node-green text { fill: #5dbe7a; }
+.svg-wrap svg .node-blue rect { fill: rgba(90,158,240,0.12); stroke: rgba(90,158,240,0.3); }
+.svg-wrap svg .node-blue text { fill: #5a9ef0; }
+
+.svg-wrap svg .arr { stroke: rgba(138,143,168,0.4); fill: none; }
+.svg-wrap svg .arr-purple { stroke: rgba(139,127,245,0.5); fill: none; }
+.svg-wrap svg .arr-teal { stroke: rgba(56,201,160,0.5); fill: none; }
+.svg-wrap svg .arr-green { stroke: rgba(93,190,122,0.5); fill: none; }
+.svg-wrap svg .arr-amber { stroke: rgba(240,160,74,0.5); fill: none; }
+.svg-wrap svg .arr-red { stroke: rgba(240,100,100,0.6); fill: none; }
+.svg-wrap svg .arr-infer { stroke: rgba(56,201,160,0.4); fill: none; stroke-dasharray: 5 3; }
+.svg-wrap svg .arr-infer-amber { stroke: rgba(240,160,74,0.4); fill: none; stroke-dasharray: 5 3; }
+.svg-wrap svg .arr-infer-purple { stroke: rgba(139,127,245,0.4); fill: none; stroke-dasharray: 5 3; }
+.svg-wrap svg .arr-gray-dash { stroke: rgba(138,143,168,0.3); fill: none; stroke-dasharray: 4 3; }
+
+.tag-ok { display:inline-block; font-size:11px; padding:2px 8px; border-radius:4px; background:var(--green-bg); color:var(--green); border:1px solid rgba(93,190,122,0.2); }
+.tag-fail { display:inline-block; font-size:11px; padding:2px 8px; border-radius:4px; background:var(--red-bg); color:var(--red); border:1px solid rgba(240,100,100,0.2); }
+
+@media (max-width: 700px) {
+  .main { grid-template-columns: 1fr; height: auto; }
+  .sidebar { height: auto; overflow-y: visible; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
+  .sc-btn { width: auto; }
+  .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">OWL Ontology — LLM Reasoning Scenarios</div>
+  <div class="header-sub">Supplement Marketplace · 8 Scenarios</div>
+</header>
+
+<div class="main">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+const scenarios = [
+{
+  num:'01', title:'Brand needs two product forms — multiple CMs qualify', owl:'owl:ObjectProperty · M:N',
+  desc:'An RFP specifies both Capsule and Softgel. The matching engine finds manufacturers covering both forms. This is pure many-to-many — one RFP links to many CMs, one CM serves many product forms.',
+  steps:[
+    {dot:'q',text:'RFP from PureBrand: <code>requiresProductForm Capsule, Softgel</code>'},
+    {dot:'r',text:'Graph traversal: find all CMs where <code>hasCapability ⊇ {Capsule, Softgel}</code>'},
+    {dot:'ok',text:'NutraBioLabs qualifies: Capsule ✓ + Softgel ✓'},
+    {dot:'ok',text:'NovaNutra qualifies: Softgel ✓ + Capsule ✓ (also has Powder — irrelevant)'},
+    {dot:'err',text:'KoreaPharma disqualified: Capsule ✓ but missing Softgel ✗'},
+  ],
+  outcome:{type:'ok',text:'2 of 3 manufacturers matched. Partial capability overlap = hard fail, not a penalty.'},
+  prompt:`ContractManufacturer hasCapability ProductForm is many-to-many: one manufacturer supports multiple product forms, and the same form can be produced by many manufacturers. When matching, check hasCapability overlap with the RFP's requiresProductForm. Partial overlap (some but not all required forms) is a disqualifying hard filter — not a score penalty.`,
+  svg:`<svg width="100%" viewBox="0 0 640 190">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g class="node-teal"><rect x="20" y="70" width="130" height="36" rx="6" stroke-width="0.5"/><text x="85" y="88" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">PureBrand RFP</text></g>
+    <text x="85" y="118" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace">Capsule + Softgel</text>
+    <g class="node-purple"><rect x="240" y="14" width="150" height="36" rx="6" stroke-width="0.5"/><text x="315" y="32" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">NutraBioLabs</text></g>
+    <text x="315" y="61" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace">Capsule, Softgel, Powder</text>
+    <g class="node-purple"><rect x="240" y="88" width="150" height="36" rx="6" stroke-width="0.5"/><text x="315" y="106" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">NovaNutra</text></g>
+    <text x="315" y="135" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace">Softgel, Capsule, Gummy</text>
+    <g class="node-gray"><rect x="240" y="152" width="150" height="36" rx="6" stroke-width="0.5"/><text x="315" y="170" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">KoreaPharma</text></g>
+    <line x1="150" y1="80" x2="238" y2="32" class="arr-teal" stroke-width="1.2" marker-end="url(#a)"/>
+    <line x1="150" y1="90" x2="238" y2="106" class="arr-teal" stroke-width="1.2" marker-end="url(#a)"/>
+    <line x1="150" y1="96" x2="238" y2="164" class="arr-gray-dash" stroke-width="1" marker-end="url(#a)"/>
+    <rect x="412" y="20" width="44" height="20" rx="4" fill="rgba(93,190,122,0.15)" stroke="rgba(93,190,122,0.3)" stroke-width="0.5"/>
+    <text x="434" y="30" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">match</text>
+    <rect x="412" y="94" width="44" height="20" rx="4" fill="rgba(93,190,122,0.15)" stroke="rgba(93,190,122,0.3)" stroke-width="0.5"/>
+    <text x="434" y="104" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">match</text>
+    <rect x="412" y="158" width="54" height="20" rx="4" fill="rgba(240,100,100,0.1)" stroke="rgba(240,100,100,0.25)" stroke-width="0.5"/>
+    <text x="439" y="168" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#f06464">no match</text>
+  </svg>`
+},
+{
+  num:'02', title:'Seoul factory auto-qualifies for Asia Pacific RFP', owl:'owl:TransitiveProperty',
+  desc:'A brand specifies targetRegion: AsiaPacific. The manufacturer\'s record only says locatedIn Seoul. Thanks to a transitive isPartOf chain, the LLM infers Seoul → Korea → AsiaPacific without any extra data.',
+  steps:[
+    {dot:'q',text:'RFP targetRegion: <code>AsiaPacific</code>'},
+    {dot:'r',text:'CM record: <code>KoreaPharma locatedIn Seoul</code>'},
+    {dot:'r',text:'Transitive chain: <code>Seoul isPartOf Korea isPartOf AsiaPacific</code>'},
+    {dot:'ok',text:'LLM infers: KoreaPharma implicitly serves AsiaPacific region'},
+    {dot:'ok',text:'No manual region re-declaration needed on every factory record'},
+  ],
+  outcome:{type:'ok',text:'KoreaPharma qualifies via 2-hop transitive inference. Zero extra schema required.'},
+  prompt:`isPartOf is a transitive property. If Seoul isPartOf Korea and Korea isPartOf AsiaPacific, then Seoul isPartOf AsiaPacific is also true. Apply this when evaluating regional RFP requirements — a manufacturer in Seoul implicitly serves all parent regions without needing explicit re-declaration in each factory record.`,
+  svg:`<svg width="100%" viewBox="0 0 640 130">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g class="node-purple"><rect x="20" y="42" width="130" height="36" rx="6" stroke-width="0.5"/><text x="85" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">KoreaPharma</text></g>
+    <g class="node-gray"><rect x="194" y="42" width="80" height="36" rx="6" stroke-width="0.5"/><text x="234" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">Seoul</text></g>
+    <g class="node-gray"><rect x="318" y="42" width="80" height="36" rx="6" stroke-width="0.5"/><text x="358" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">Korea</text></g>
+    <g class="node-teal"><rect x="444" y="42" width="110" height="36" rx="6" stroke-width="0.5"/><text x="499" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">AsiaPacific</text></g>
+    <line x1="150" y1="60" x2="192" y2="60" class="arr-purple" stroke-width="1.2" marker-end="url(#a)"/>
+    <line x1="274" y1="60" x2="316" y2="60" class="arr" stroke-width="1" marker-end="url(#a)"/>
+    <line x1="398" y1="60" x2="442" y2="60" class="arr" stroke-width="1" marker-end="url(#a)"/>
+    <text x="171" y="36" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">locatedIn</text>
+    <text x="295" y="36" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">isPartOf</text>
+    <text x="420" y="36" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">isPartOf</text>
+    <path d="M85 78 Q85 108 499 108 Q554 108 554 78" class="arr-infer" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="340" y="103" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#38c9a0">inferred: locatedIn AsiaPacific (transitive)</text>
+  </svg>`
+},
+{
+  num:'03', title:'Korean factory auto-assigned MFDS regulation', owl:'owl:propertyChainAxiom',
+  desc:'You want to know which regulations apply to a manufacturer without storing them explicitly per factory. Property chain: CM locatedIn Country → Country hasRegulation Law → CM subjectTo Law (inferred automatically).',
+  steps:[
+    {dot:'r',text:'Data: <code>KoreaPharma locatedIn Korea</code>'},
+    {dot:'r',text:'Data: <code>Korea hasRegulation MFDS_Act</code>'},
+    {dot:'r',text:'Chain axiom: <code>locatedIn ∘ hasRegulation → subjectToRegulation</code>'},
+    {dot:'ok',text:'LLM infers: <code>KoreaPharma subjectToRegulation MFDS_Act</code>'},
+    {dot:'ok',text:'Brand RFP requiring MFDS compliance auto-matched — no manual tagging needed'},
+  ],
+  outcome:{type:'ok',text:'Regulatory compliance inferred from location. Adding a new regulation to Korea auto-applies to all Korean manufacturers.'},
+  prompt:`subjectToRegulation is a property chain: (locatedIn ∘ hasRegulation). If KoreaPharma locatedIn Korea, and Korea hasRegulation MFDS_Act, then KoreaPharma subjectToRegulation MFDS_Act is automatically true — without explicit assertion. When an RFP specifies a regulatory requirement, traverse this two-hop chain to evaluate compliance.`,
+  svg:`<svg width="100%" viewBox="0 0 640 150">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g class="node-purple"><rect x="20" y="50" width="130" height="36" rx="6" stroke-width="0.5"/><text x="85" y="68" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">KoreaPharma</text></g>
+    <g class="node-gray"><rect x="220" y="50" width="80" height="36" rx="6" stroke-width="0.5"/><text x="260" y="68" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">Korea</text></g>
+    <g class="node-amber"><rect x="370" y="50" width="110" height="36" rx="6" stroke-width="0.5"/><text x="425" y="68" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">MFDS_Act</text></g>
+    <line x1="150" y1="68" x2="218" y2="68" class="arr-purple" stroke-width="1.2" marker-end="url(#a)"/>
+    <line x1="300" y1="68" x2="368" y2="68" class="arr" stroke-width="1" marker-end="url(#a)"/>
+    <text x="184" y="42" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">locatedIn</text>
+    <text x="334" y="42" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">hasRegulation</text>
+    <path d="M85 86 Q85 125 425 125 Q480 125 480 86" class="arr-infer-amber" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="290" y="120" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#f0a04a">inferred: subjectToRegulation MFDS_Act</text>
+  </svg>`
+},
+{
+  num:'04', title:'Record tries to be Brand and Manufacturer — flagged', owl:'owl:disjointWith',
+  desc:'An imported record from a third-party directory appears to play both roles: it submits RFPs like a Brand but also has production capabilities like a CM. The disjoint axiom forces the LLM to flag it rather than silently dual-classify.',
+  steps:[
+    {dot:'q',text:'Imported record: has <code>submitsRFP</code> (Brand property) AND <code>hasCapability</code> (CM property)'},
+    {dot:'r',text:'Axiom: <code>ContractManufacturer owl:disjointWith SupplementBrand</code>'},
+    {dot:'err',text:'LLM detects: no entity can satisfy both class definitions simultaneously'},
+    {dot:'err',text:'Classification conflict raised — sent to human review queue'},
+    {dot:'ok',text:'Correct resolution: entity is a Brand that also owns a manufacturing subsidiary (two separate records)'},
+  ],
+  outcome:{type:'warn',text:'Data quality flag raised correctly. Without disjoint axiom, LLM would silently assign both classes and corrupt match results.'},
+  prompt:`ContractManufacturer and SupplementBrand are disjoint classes — no single entity can be both simultaneously. If an imported record appears to satisfy both class definitions (has hasCapability AND submitsRFP), do NOT assign both types. Instead, flag it as a data quality conflict and route to human review. This is not an error to resolve by merging — it requires structural separation into two records.`,
+  svg:`<svg width="100%" viewBox="0 0 640 160">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g class="node-gray"><rect x="220" y="20" width="130" height="36" rx="6" stroke-width="0.5"/><text x="285" y="38" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">AmbiguousCo</text></g>
+    <g class="node-purple"><rect x="80" y="104" width="170" height="36" rx="6" stroke-width="0.5"/><text x="165" y="122" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">ContractManufacturer</text></g>
+    <g class="node-teal"><rect x="310" y="104" width="150" height="36" rx="6" stroke-width="0.5"/><text x="385" y="122" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">SupplementBrand</text></g>
+    <line x1="268" y1="56" x2="186" y2="102" class="arr-purple" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a)"/>
+    <line x1="302" y1="56" x2="368" y2="102" class="arr-teal" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a)"/>
+    <text x="198" y="84" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">hasCapability</text>
+    <text x="362" y="84" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">submitsRFP</text>
+    <line x1="252" y1="122" x2="308" y2="122" stroke="#f06464" stroke-width="2.5"/>
+    <line x1="252" y1="112" x2="308" y2="132" stroke="#f06464" stroke-width="2.5"/>
+    <text x="280" y="152" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="#f06464">disjointWith — conflict!</text>
+  </svg>`
+},
+{
+  num:'05', title:'Organic-only RFP — "some" vs "all" certification', owl:'owl:someValuesFrom + allValuesFrom',
+  desc:'Two certification requirements: "has at least one organic cert" vs "every ingredient must be organic." The LLM must distinguish partial from total compliance — critical for not over- or under-matching.',
+  steps:[
+    {dot:'q',text:'RFP A: <code>someValuesFrom OrganicCert</code> — at least one cert sufficient'},
+    {dot:'q',text:'RFP B: <code>allValuesFrom OrganicIngredient</code> — every ingredient must be organic'},
+    {dot:'ok',text:'CM with 80% organic ingredients: qualifies for RFP A (some), fails RFP B (all)'},
+    {dot:'ok',text:'CM with 100% organic ingredients: qualifies for both'},
+    {dot:'err',text:'Without this axiom, LLM would treat both RFPs identically → wrong matches'},
+  ],
+  outcome:{type:'ok',text:'LLM correctly applies existential (some) vs universal (all) filtering. No ambiguity in match explanations.'},
+  prompt:`Two distinct restriction types apply to organic requirements. someValuesFrom means at least one value must satisfy the range — partial compliance is sufficient. allValuesFrom means every value must satisfy the range — no exceptions allowed. When an RFP specifies "organic only", check whether it uses someValuesFrom (any organic cert qualifies) or allValuesFrom (100% organic ingredients required). Never treat these as equivalent.`,
+  svg:`<svg width="100%" viewBox="0 0 640 185">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g class="node-amber"><rect x="20" y="28" width="100" height="36" rx="6" stroke-width="0.5"/><text x="70" y="46" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">RFP A</text></g>
+    <text x="70" y="76" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">someValuesFrom</text>
+    <g class="node-amber"><rect x="20" y="112" width="100" height="36" rx="6" stroke-width="0.5"/><text x="70" y="130" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">RFP B</text></g>
+    <text x="70" y="160" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">allValuesFrom</text>
+    <g class="node-purple"><rect x="240" y="28" width="160" height="36" rx="6" stroke-width="0.5"/><text x="320" y="46" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">CM-A (80% organic)</text></g>
+    <g class="node-purple"><rect x="240" y="112" width="160" height="36" rx="6" stroke-width="0.5"/><text x="320" y="130" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">CM-B (100% organic)</text></g>
+    <line x1="120" y1="46" x2="238" y2="46" class="arr-amber" stroke-width="1.2" marker-end="url(#a)"/>
+    <line x1="120" y1="130" x2="238" y2="130" class="arr-gray-dash" stroke-width="1" marker-end="url(#a)"/>
+    <line x1="120" y1="56" x2="238" y2="122" class="arr-teal" stroke-width="1" marker-end="url(#a)"/>
+    <line x1="120" y1="136" x2="238" y2="140" class="arr-teal" stroke-width="1" marker-end="url(#a)"/>
+    <rect x="420" y="32" width="44" height="20" rx="4" fill="rgba(93,190,122,0.15)" stroke="rgba(93,190,122,0.3)" stroke-width="0.5"/>
+    <text x="442" y="42" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">pass</text>
+    <rect x="420" y="116" width="38" height="20" rx="4" fill="rgba(240,100,100,0.12)" stroke="rgba(240,100,100,0.25)" stroke-width="0.5"/>
+    <text x="439" y="126" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#f06464">fail</text>
+    <rect x="420" y="72" width="44" height="20" rx="4" fill="rgba(93,190,122,0.15)" stroke="rgba(93,190,122,0.3)" stroke-width="0.5"/>
+    <text x="442" y="82" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">pass</text>
+    <rect x="420" y="140" width="44" height="20" rx="4" fill="rgba(93,190,122,0.15)" stroke="rgba(93,190,122,0.3)" stroke-width="0.5"/>
+    <text x="442" y="150" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">pass</text>
+  </svg>`
+},
+{
+  num:'06', title:'Match must link exactly one CM and one RFP', owl:'owl:cardinality (exactly 1)',
+  desc:'The Match entity is your core output. Cardinality restrictions declare it must reference exactly one ContractManufacturer and exactly one RFP — never zero, never two. The LLM validates this at generation time.',
+  steps:[
+    {dot:'r',text:'Axiom: <code>Match hasManufacturer cardinality 1</code>'},
+    {dot:'r',text:'Axiom: <code>Match hasRFP cardinality 1</code>'},
+    {dot:'ok',text:'LLM generating a Match always includes both references — no partial objects'},
+    {dot:'err',text:'If LLM output omits hasRFP → validation failure, regenerate with error context'},
+    {dot:'err',text:'If LLM output lists 2 CMs → structural violation, collapse to top-scored one'},
+  ],
+  outcome:{type:'ok',text:'Cardinality constraints act as a schema contract for LLM outputs — functionally equivalent to Pydantic validation but declared in the ontology.'},
+  prompt:`Match entities have strict cardinality constraints: hasManufacturer must have exactly 1 value (never 0, never 2+), and hasRFP must have exactly 1 value. When generating a Match, always include both references. If you identify multiple candidate manufacturers for a single RFP, generate one Match per CM — not one Match referencing multiple CMs. A Match with a missing reference is invalid and must be regenerated.`,
+  svg:`<svg width="100%" viewBox="0 0 640 150">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g class="node-purple"><rect x="60" y="52" width="155" height="36" rx="6" stroke-width="0.5"/><text x="137" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">ContractManufacturer</text></g>
+    <g class="node-coral"><rect x="264" y="52" width="80" height="36" rx="6" stroke-width="0.5"/><text x="304" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">Match</text></g>
+    <g class="node-amber"><rect x="398" y="52" width="80" height="36" rx="6" stroke-width="0.5"/><text x="438" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">RFP</text></g>
+    <line x1="262" y1="70" x2="217" y2="70" class="arr-coral" stroke-width="1.5" marker-end="url(#a)"/>
+    <line x1="346" y1="70" x2="396" y2="70" class="arr-coral" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="239" y="46" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">exactly 1</text>
+    <text x="371" y="46" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">exactly 1</text>
+    <rect x="200" y="104" width="180" height="22" rx="4" fill="rgba(93,190,122,0.12)" stroke="rgba(93,190,122,0.25)" stroke-width="0.5"/>
+    <text x="290" y="115" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">valid: 1 CM + 1 RFP</text>
+    <rect x="400" y="104" width="190" height="22" rx="4" fill="rgba(240,100,100,0.1)" stroke="rgba(240,100,100,0.2)" stroke-width="0.5"/>
+    <text x="495" y="115" text-anchor="middle" dominant-baseline="central" font-size="10" font-family="'DM Mono',monospace" fill="#f06464">invalid: 0 or 2+ values</text>
+  </svg>`
+},
+{
+  num:'07', title:'External directory record auto-classified as CM', owl:'owl:equivalentClass',
+  desc:'You ingest factory data from Korean public APIs (data.go.kr). The records use schema:Organization, not your internal CM type. An equivalentClass axiom defines exactly what conditions make an Organization a ContractManufacturer.',
+  steps:[
+    {dot:'q',text:'External record: <code>schema:Organization</code> with GMP license field'},
+    {dot:'r',text:'Axiom: CM ≡ Organization ∩ (holdsCertification some GMPFamily)'},
+    {dot:'ok',text:'LLM maps GMP license field → <code>holdsCertification supp:GMP</code>'},
+    {dot:'ok',text:'Record satisfies equivalentClass condition → classified as ContractManufacturer'},
+    {dot:'ok',text:'Immediately eligible for matching without manual reclassification'},
+  ],
+  outcome:{type:'ok',text:'External data ingested and auto-typed in one step. New data sources only require property mapping — not new entity types.'},
+  prompt:`ContractManufacturer is equivalent to: any schema:Organization that holds at least one certification from the GMPFamily class. When ingesting external supplier data, if a schema:Organization record has a GMP-type certification mapped to holdsCertification, treat it as a ContractManufacturer for all matching purposes. No explicit type reassignment needed — equivalence handles classification automatically.`,
+  svg:`<svg width="100%" viewBox="0 0 640 160">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g class="node-gray"><rect x="20" y="60" width="145" height="36" rx="6" stroke-width="0.5"/><text x="92" y="78" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">schema:Organization</text></g>
+    <text x="92" y="108" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">+ GMP license field</text>
+    <g class="node-blue"><rect x="230" y="28" width="135" height="36" rx="6" stroke-width="0.5"/><text x="297" y="46" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">holdsCertification</text></g>
+    <g class="node-green"><rect x="230" y="90" width="135" height="36" rx="6" stroke-width="0.5"/><text x="297" y="108" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">GMP cert</text></g>
+    <g class="node-purple"><rect x="444" y="60" width="155" height="36" rx="6" stroke-width="0.5"/><text x="521" y="78" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">ContractManufacturer</text></g>
+    <line x1="165" y1="72" x2="228" y2="46" class="arr" stroke-width="1" marker-end="url(#a)"/>
+    <line x1="165" y1="84" x2="228" y2="102" class="arr" stroke-width="1" marker-end="url(#a)"/>
+    <line x1="365" y1="68" x2="442" y2="72" class="arr-purple" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="404" y="58" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#8b7ff5">≡ equivalentClass</text>
+    <text x="197" y="52" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">maps to</text>
+    <text x="197" y="98" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace">satisfies</text>
+  </svg>`
+},
+{
+  num:'08', title:'PremiumMatch requires score AND cert completeness', owl:'owl:intersectionOf',
+  desc:'Your UI shows a "Premium Match" badge when a match is both high-scored AND certification-complete. This composite condition is expressed as a class intersection — the LLM applies it as a single logical predicate.',
+  steps:[
+    {dot:'r',text:'Axiom: <code>PremiumMatch = Match ∩ HighScore ∩ CertComplete</code>'},
+    {dot:'ok',text:'Match A: score=0.91 ✓, certs=full ✓ → PremiumMatch ✓'},
+    {dot:'err',text:'Match B: score=0.95 ✓, certs=partial ✗ → regular Match only'},
+    {dot:'err',text:'Match C: score=0.72 ✗, certs=full ✓ → regular Match only'},
+    {dot:'ok',text:'LLM emits <code>rdf:type supp:PremiumMatch</code> only when both conditions hold'},
+  ],
+  outcome:{type:'ok',text:'Composite class logic replaces if/else chains in your matching code. The LLM applies the ontology definition directly.'},
+  prompt:`PremiumMatch is the intersection of three classes: Match AND HighScoreMatch (score ≥ 0.85) AND CertificationCompleteMatch (all required certifications present, none missing). A Match is PremiumMatch only when ALL three conditions hold simultaneously. Assign rdf:type supp:PremiumMatch only when this full intersection is satisfied — partial satisfaction (high score but incomplete certs, or vice versa) remains a standard Match.`,
+  svg:`<svg width="100%" viewBox="0 0 640 175">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g class="node-coral"><rect x="20" y="62" width="115" height="36" rx="6" stroke-width="0.5"/><text x="77" y="80" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="12" font-weight="500">PremiumMatch</text></g>
+    <g class="node-coral"><rect x="188" y="18" width="80" height="30" rx="6" stroke-width="0.5"/><text x="228" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="11" font-weight="500">Match</text></g>
+    <g class="node-green"><rect x="284" y="18" width="96" height="30" rx="6" stroke-width="0.5"/><text x="332" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="11" font-weight="500">HighScore</text></g>
+    <g class="node-blue"><rect x="396" y="18" width="110" height="30" rx="6" stroke-width="0.5"/><text x="451" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Sora',sans-serif" font-size="11" font-weight="500">CertComplete</text></g>
+    <text x="277" y="33" text-anchor="middle" font-size="14" fill="#555a72">∩</text>
+    <text x="389" y="33" text-anchor="middle" font-size="14" fill="#555a72">∩</text>
+    <line x1="135" y1="78" x2="186" y2="33" class="arr-coral" stroke-width="1" marker-end="url(#a)"/>
+    <rect x="185" y="96" width="108" height="60" rx="6" fill="rgba(93,190,122,0.1)" stroke="rgba(93,190,122,0.25)" stroke-width="0.5"/>
+    <text x="239" y="114" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="#5dbe7a">Match A</text>
+    <text x="239" y="130" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">score=0.91 ✓</text>
+    <text x="239" y="146" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">certs=full ✓</text>
+    <rect x="305" y="96" width="108" height="60" rx="6" fill="rgba(240,100,100,0.08)" stroke="rgba(240,100,100,0.2)" stroke-width="0.5"/>
+    <text x="359" y="114" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="#f06464">Match B</text>
+    <text x="359" y="130" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#f06464">score=0.95 ✓</text>
+    <text x="359" y="146" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#f06464">certs=partial ✗</text>
+    <rect x="425" y="96" width="108" height="60" rx="6" fill="rgba(240,100,100,0.08)" stroke="rgba(240,100,100,0.2)" stroke-width="0.5"/>
+    <text x="479" y="114" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="#f06464">Match C</text>
+    <text x="479" y="130" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#f06464">score=0.72 ✗</text>
+    <text x="479" y="146" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#5dbe7a">certs=full ✓</text>
+  </svg>`
+},
+];
+
+let active = 0;
+
+function renderSidebar() {
+  document.getElementById('sidebar').innerHTML = scenarios.map((s, i) => `
+    <button class="sc-btn ${i===active?'active':''}" onclick="select(${i})">
+      <div class="num">${s.num}</div>
+      <div class="sc-title">${s.title}</div>
+      <div class="sc-owl">${s.owl}</div>
+    </button>
+  `).join('');
+}
+
+function renderContent() {
+  const s = scenarios[active];
+  const stepsHtml = s.steps.map(st => `
+    <div class="step">
+      <div class="step-dot dot-${st.dot}">${st.dot==='q'?'?':st.dot==='r'?'→':st.dot==='ok'?'✓':'!'}</div>
+      <div class="step-text">${st.text}</div>
+    </div>
+  `).join('');
+  const outClass = {ok:'outcome-ok',warn:'outcome-warn',err:'outcome-err'}[s.outcome.type];
+  document.getElementById('content').innerHTML = `
+    <div><span class="owl-badge">${s.owl}</span></div>
+    <p class="desc">${s.desc}</p>
+    <div class="svg-wrap">${s.svg}</div>
+    <div class="two-col">
+      <div>
+        <div class="col-label">Reasoning steps</div>
+        <div class="steps">${stepsHtml}</div>
+        <div style="margin-top:14px">
+          <div class="col-label" style="margin-bottom:6px">Outcome</div>
+          <div class="outcome ${outClass}">${s.outcome.text}</div>
+        </div>
+      </div>
+      <div>
+        <div class="col-label">System prompt injection</div>
+        <div class="prompt-box">${s.prompt}</div>
+      </div>
+    </div>
+  `;
+}
+
+function select(i) { active = i; renderSidebar(); renderContent(); }
+renderSidebar(); renderContent();
+</script>
+</body>
+</html>

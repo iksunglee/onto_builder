@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ontology → LLM: Beginner's Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#f7f5f0;
+  --surface:#ffffff;
+  --surface2:#f0ede6;
+  --border:#e2ddd4;
+  --border2:#ccc7bc;
+  --text:#1a1916;
+  --text2:#6b6760;
+  --text3:#a8a39a;
+  --ink:#2c2926;
+  --accent:#2d5a8e;
+  --accent-bg:#edf3f9;
+  --accent-border:#b8d0e8;
+  --teal:#1a7a5e;
+  --teal-bg:#e8f5f0;
+  --teal-border:#a8d8c8;
+  --amber:#8a5a0a;
+  --amber-bg:#fdf4e3;
+  --amber-border:#e8c87a;
+  --red:#8a2020;
+  --red-bg:#fdf0f0;
+  --red-border:#e8a8a8;
+  --purple:#4a2d8a;
+  --purple-bg:#f0ecfb;
+  --purple-border:#c4b0e8;
+  --serif:'Instrument Serif',serif;
+  --sans:'Plus Jakarta Sans',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+  --r:10px;
+}
+
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+
+/* ── layout ── */
+.shell{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+
+/* ── sidebar ── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-head{padding:0 20px 20px;border-bottom:1px solid var(--border)}
+.sidebar-head h1{font-family:var(--serif);font-size:20px;font-weight:400;color:var(--ink);line-height:1.3}
+.sidebar-head p{font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono)}
+
+.phase-group{padding:12px 0}
+.phase-label{font-size:10px;font-weight:600;letter-spacing:0.08em;color:var(--text3);text-transform:uppercase;padding:0 20px 6px}
+.step-btn{all:unset;display:flex;align-items:center;gap:10px;width:100%;padding:8px 20px;cursor:pointer;transition:background 0.1s;border-left:3px solid transparent}
+.step-btn:hover{background:var(--surface2)}
+.step-btn.active{background:var(--accent-bg);border-left-color:var(--accent)}
+.step-btn .snum{width:22px;height:22px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--text2);flex-shrink:0;font-family:var(--mono)}
+.step-btn.active .snum{background:var(--accent);border-color:var(--accent);color:#fff}
+.step-btn.done .snum{background:var(--teal);border-color:var(--teal);color:#fff}
+.step-btn .slabel{font-size:12px;font-weight:500;color:var(--text2);line-height:1.3}
+.step-btn.active .slabel{color:var(--accent)}
+
+/* ── main ── */
+.main{padding:40px 48px;max-width:860px}
+
+.phase-pill{display:inline-block;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:16px;font-family:var(--mono)}
+.phase-1{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+.phase-2{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.phase-3{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.phase-4{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border)}
+
+.step-title{font-family:var(--serif);font-size:32px;font-weight:400;color:var(--ink);line-height:1.2;margin-bottom:8px}
+.step-sub{font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:28px;max-width:640px}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card-title .ct-icon{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px}
+.icon-blue{background:var(--accent-bg);color:var(--accent)}
+.icon-teal{background:var(--teal-bg);color:var(--teal)}
+.icon-amber{background:var(--amber-bg);color:var(--amber)}
+.icon-red{background:var(--red-bg);color:var(--red)}
+.icon-purple{background:var(--purple-bg);color:var(--purple)}
+
+.card-body{font-size:13px;color:var(--text2);line-height:1.7}
+.card-body p+p{margin-top:8px}
+
+/* code */
+.code-block{background:#1e1e1e;color:#d4d0c8;font-family:var(--mono);font-size:12px;line-height:1.8;border-radius:8px;padding:16px 18px;overflow-x:auto;margin:10px 0;white-space:pre}
+.t-comment{color:#6a9955}.t-keyword{color:#569cd6}.t-string{color:#ce9178}.t-class{color:#4ec9b0}.t-prop{color:#9cdcfe}.t-num{color:#b5cea8}.t-op{color:#d4d0c8}.t-eng{color:#dcdcaa}
+
+/* two col */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+
+/* comparison table */
+.compare-table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+.compare-table th{background:var(--surface2);padding:8px 12px;text-align:left;font-weight:600;border:1px solid var(--border);color:var(--ink)}
+.compare-table td{padding:8px 12px;border:1px solid var(--border);color:var(--text2);vertical-align:top}
+.compare-table tr:nth-child(even) td{background:var(--surface2)}
+
+/* checklist */
+.checklist{list-style:none;display:flex;flex-direction:column;gap:6px}
+.checklist li{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text2)}
+.check-icon{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px}
+.ci-ok{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.ci-warn{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.ci-info{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+
+/* callout */
+.callout{border-radius:8px;padding:14px 16px;margin:14px 0;font-size:13px;line-height:1.7}
+.callout-blue{background:var(--accent-bg);border:1px solid var(--accent-border);color:var(--accent)}
+.callout-amber{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber)}
+.callout-teal{background:var(--teal-bg);border:1px solid var(--teal-border);color:var(--teal)}
+.callout strong{font-weight:600}
+
+/* flow diagram */
+.flow{display:flex;align-items:center;gap:0;margin:16px 0;flex-wrap:wrap}
+.flow-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;font-weight:500;color:var(--ink);white-space:nowrap}
+.flow-arr{color:var(--text3);font-size:18px;padding:0 6px;flex-shrink:0}
+
+/* tag */
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);color:var(--text2)}
+.tag+.tag{margin-left:4px}
+
+/* prompt preview */
+.prompt-preview{background:#1a1916;border-radius:10px;padding:20px;font-family:var(--mono);font-size:12px;line-height:1.8;color:#d4d0c8;overflow-x:auto;white-space:pre-wrap;word-break:break-word;border:1px solid #333}
+.pp-system{color:#6a9955}.pp-text{color:#d4d0c8}.pp-class{color:#4ec9b0}.pp-prop{color:#9cdcfe}.pp-val{color:#ce9178}.pp-em{color:#dcdcaa}
+
+/* nav */
+.step-nav{display:flex;gap:10px;margin-top:40px;padding-top:24px;border-top:1px solid var(--border)}
+.nav-btn{all:unset;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s}
+.nav-prev{border:1px solid var(--border);color:var(--text2)}
+.nav-prev:hover{background:var(--surface2)}
+.nav-next{background:var(--accent);color:#fff}
+.nav-next:hover{background:#254e7a}
+.nav-btn:disabled{opacity:0.35;cursor:default}
+
+/* progress */
+.progress-bar{height:2px;background:var(--border);position:sticky;top:0;z-index:10}
+.progress-fill{height:100%;background:var(--accent);transition:width 0.3s}
+
+@media(max-width:700px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto}
+  .main{padding:24px 20px}
+  .grid2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:9%"></div></div>
+
+<div class="shell">
+<nav class="sidebar">
+  <div class="sidebar-head">
+    <h1>Ontology<br>→ LLM</h1>
+    <p>beginner's guide</p>
+  </div>
+  <div id="nav-tree"></div>
+</nav>
+
+<main class="main" id="main-content"></main>
+</div>
+
+<script>
+const steps = [
+{
+  phase:'Phase 1 — Understand',phaseClass:'phase-1',num:1,
+  label:'What is an ontology?',
+  title:'What is an ontology?',
+  sub:'An ontology is a formal map of your domain — the things that exist, what they\'re called, and how they relate. Think of it as a shared vocabulary that both humans and machines can reason with.',
+  content:`
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">?</span> The simplest definition</div>
+  <div class="card-body"><p>An ontology answers three questions about your domain:</p></div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="card" style="border-color:var(--accent-border);background:var(--accent-bg)">
+      <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px">WHAT EXISTS?</div>
+      <div style="font-size:13px;color:var(--text2)">Classes — the categories of things.<br><em style="color:var(--text3)">e.g. Manufacturer, Brand, Product</em></div>
+    </div>
+    <div class="card" style="border-color:var(--teal-border);background:var(--teal-bg)">
+      <div style="font-size:11px;font-weight:600;color:var(--teal);margin-bottom:4px">HOW ARE THEY RELATED?</div>
+      <div style="font-size:13px;color:var(--text2)">Properties — the edges between things.<br><em style="color:var(--text3)">e.g. hasCapability, holdsCertification</em></div>
+    </div>
+    <div class="card" style="border-color:var(--amber-border);background:var(--amber-bg)">
+      <div style="font-size:11px;font-weight:600;color:var(--amber);margin-bottom:4px">WHAT ARE THE RULES?</div>
+      <div style="font-size:13px;color:var(--text2)">Axioms — logical constraints on the above.<br><em style="color:var(--text3)">e.g. "a Match must have exactly one CM"</em></div>
+    </div>
+    <div class="card" style="border-color:var(--purple-border);background:var(--purple-bg)">
+      <div style="font-size:11px;font-weight:600;color:var(--purple);margin-bottom:4px">WHO ARE THE INDIVIDUALS?</div>
+      <div style="font-size:13px;color:var(--text2)">Instances — actual data records.<br><em style="color:var(--text3)">e.g. NutraBioLabs (a ContractManufacturer)</em></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-teal">≠</span> Ontology vs database schema</div>
+  <table class="compare-table">
+    <tr><th>Database schema</th><th>OWL Ontology</th></tr>
+    <tr><td>Describes tables & columns</td><td>Describes concepts & relationships</td></tr>
+    <tr><td>Enforced at storage layer</td><td>Enforced at reasoning layer</td></tr>
+    <tr><td>Rigid — changing structure breaks things</td><td>Open world — can extend without breaking</td></tr>
+    <tr><td>Machine-readable only</td><td>Machine AND human readable</td></tr>
+    <tr><td>No inference</td><td>Can infer new facts from existing ones</td></tr>
+  </table>
+</div>
+
+<div class="callout callout-blue"><strong>Why does this matter for LLMs?</strong> An LLM doesn't know your domain vocabulary. Without an ontology, it has to guess what "capability", "MOQ", or "certification" means in your context — and it guesses differently each time. The ontology is the shared contract between your data and the model.</div>
+`
+},
+{
+  phase:'Phase 1 — Understand',phaseClass:'phase-1',num:2,
+  label:'Core OWL building blocks',
+  title:'Core OWL building blocks',
+  sub:'OWL (Web Ontology Language) has five essential concepts. You only need these five to build a working ontology for your domain.',
+  content:`
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">1</span> owl:Class — categories of things</div>
+  <div class="card-body"><p>A Class is a named category. Every individual in your domain belongs to one or more classes.</p></div>
+  <div class="code-block"><span class="t-comment"># Define your main categories</span>
+<span class="t-class">supp:ContractManufacturer</span>  <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .
+<span class="t-class">supp:SupplementBrand</span>       <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .
+<span class="t-class">supp:RFP</span>                   <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .
+<span class="t-class">supp:Match</span>                 <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .</div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-teal">2</span> rdfs:subClassOf — the hierarchy</div>
+  <div class="card-body"><p>Organise classes into a tree. A subclass inherits everything from its parent. If Manufacturer is a subclass of Organization, every Manufacturer is also an Organization.</p></div>
+  <div class="code-block"><span class="t-class">supp:ContractManufacturer</span>
+  <span class="t-keyword">rdfs:subClassOf</span> <span class="t-class">supp:Organization</span> .
+
+<span class="t-class">supp:SupplementBrand</span>
+  <span class="t-keyword">rdfs:subClassOf</span> <span class="t-class">supp:Organization</span> .</div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-amber">3</span> owl:ObjectProperty — links between things</div>
+  <div class="card-body"><p>An ObjectProperty is a named relationship between two individuals. One manufacturer can hasCapability many product forms — this is your many-to-many, no junction table needed.</p></div>
+  <div class="code-block"><span class="t-class">supp:hasCapability</span>
+  <span class="t-keyword">a</span>            <span class="t-class">owl:ObjectProperty</span> ;
+  <span class="t-keyword">rdfs:domain</span>  <span class="t-class">supp:ContractManufacturer</span> ;  <span class="t-comment"># who has it</span>
+  <span class="t-keyword">rdfs:range</span>   <span class="t-class">supp:ProductForm</span> .           <span class="t-comment"># what it points to</span></div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-purple">4</span> owl:DatatypeProperty — facts about things</div>
+  <div class="card-body"><p>A DatatypeProperty links an individual to a literal value — a number, string, or date. Use these for concrete data attributes.</p></div>
+  <div class="code-block"><span class="t-class">supp:hasMOQ</span>
+  <span class="t-keyword">a</span>            <span class="t-class">owl:DatatypeProperty</span> ;
+  <span class="t-keyword">rdfs:domain</span>  <span class="t-class">supp:ContractManufacturer</span> ;
+  <span class="t-keyword">rdfs:range</span>   <span class="t-class">xsd:integer</span> .
+
+<span class="t-class">supp:hasScore</span>
+  <span class="t-keyword">a</span>            <span class="t-class">owl:DatatypeProperty</span> ;
+  <span class="t-keyword">rdfs:domain</span>  <span class="t-class">supp:Match</span> ;
+  <span class="t-keyword">rdfs:range</span>   <span class="t-class">xsd:float</span> .</div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-teal">5</span> Individuals — actual data records</div>
+  <div class="card-body"><p>An individual is a specific instance of a class. This is where your real data lives in the graph.</p></div>
+  <div class="code-block"><span class="t-class">supp:NutraBioLabs</span>
+  <span class="t-keyword">a</span>                        <span class="t-class">supp:ContractManufacturer</span> ;
+  <span class="t-keyword">supp:hasCapability</span>       <span class="t-class">supp:Capsule</span>, <span class="t-class">supp:Softgel</span>, <span class="t-class">supp:Powder</span> ;
+  <span class="t-keyword">supp:holdsCertification</span>  <span class="t-class">supp:GMP</span> ;
+  <span class="t-keyword">supp:hasMOQ</span>              <span class="t-num">10000</span> .</div>
+</div>
+`
+},
+{
+  phase:'Phase 2 — Plan',phaseClass:'phase-2',num:3,
+  label:'Step 1: Find your domain nouns',
+  title:'Step 1 — Find your domain nouns',
+  sub:'Before writing any code, list the things in your domain. These become your Classes. A good test: if you\'d give something its own database row, it\'s probably a class.',
+  content:`
+<div class="callout callout-teal"><strong>The noun test:</strong> Read your domain description and highlight every noun. Each meaningful noun that has its own identity and attributes is a candidate class.</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">eg</span> Applied to the supplement marketplace</div>
+  <div class="card-body"><p>Domain description: <em>"Supplement brands submit requests to find contract manufacturers. Each manufacturer has specific production capabilities and certifications. The system creates matches and scores them."</em></p></div>
+  <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--text2)">
+    <p><strong style="color:var(--ink)">Highlighted nouns:</strong></p>
+    <p style="margin-top:8px;line-height:2">
+      <span style="background:#fff7e0;padding:2px 6px;border-radius:4px;border:1px solid var(--amber-border);color:var(--amber)">supplement brand</span> 
+      <span style="background:#fff7e0;padding:2px 6px;border-radius:4px;border:1px solid var(--amber-border);color:var(--amber)">request</span> 
+      <span style="background:#e8f5f0;padding:2px 6px;border-radius:4px;border:1px solid var(--teal-border);color:var(--teal)">contract manufacturer</span> 
+      <span style="background:#e8f5f0;padding:2px 6px;border-radius:4px;border:1px solid var(--teal-border);color:var(--teal)">production capability</span> 
+      <span style="background:#e8f5f0;padding:2px 6px;border-radius:4px;border:1px solid var(--teal-border);color:var(--teal)">certification</span> 
+      <span style="background:#edf3f9;padding:2px 6px;border-radius:4px;border:1px solid var(--accent-border);color:var(--accent)">match</span> 
+      <span style="background:#edf3f9;padding:2px 6px;border-radius:4px;border:1px solid var(--accent-border);color:var(--accent)">score</span>
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-teal">✓</span> Decide: class or attribute?</div>
+  <table class="compare-table">
+    <tr><th>Noun</th><th>Class or Attribute?</th><th>Why</th></tr>
+    <tr><td>ContractManufacturer</td><td><span class="tag">Class</span></td><td>Has its own identity, many attributes, relationships</td></tr>
+    <tr><td>SupplementBrand</td><td><span class="tag">Class</span></td><td>Has its own identity, submits RFPs</td></tr>
+    <tr><td>RFP</td><td><span class="tag">Class</span></td><td>Has its own lifecycle, links to brand + match</td></tr>
+    <tr><td>Match</td><td><span class="tag">Class</span></td><td>Has score, status, explanation — own identity</td></tr>
+    <tr><td>Certification</td><td><span class="tag">Class</span></td><td>Enumerable, reused across many CMs</td></tr>
+    <tr><td>ProductForm</td><td><span class="tag">Class</span></td><td>Enumerable, reused across many CMs</td></tr>
+    <tr><td>Score</td><td><span class="tag">Attribute</span></td><td>Just a number on Match — not its own identity</td></tr>
+    <tr><td>MOQ</td><td><span class="tag">Attribute</span></td><td>Just a number on ContractManufacturer</td></tr>
+  </table>
+</div>
+
+<div class="callout callout-amber"><strong>Beginner mistake to avoid:</strong> Don't make everything a class. If something is just a value (a number, a short string, a boolean), make it a DatatypeProperty. Only promote it to a Class if it has its own attributes or relationships.</div>
+`
+},
+{
+  phase:'Phase 2 — Plan',phaseClass:'phase-2',num:4,
+  label:'Step 2: Map the relationships',
+  title:'Step 2 — Map the relationships',
+  sub:'Now find the verbs between your nouns. Each verb connecting two classes becomes an ObjectProperty. These are the edges in your knowledge graph.',
+  content:`
+<div class="callout callout-teal"><strong>The verb test:</strong> For every pair of classes, ask "does one [verb] the other?" If yes, that verb is an ObjectProperty.</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">→</span> Verb extraction exercise</div>
+  <div class="card-body"><p>Walk through each class pair and ask: what does A do to B? What does B have of A?</p></div>
+  <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="padding:4px 10px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:6px;color:var(--purple);font-weight:500;min-width:170px">ContractManufacturer</span>
+      <span style="color:var(--teal);font-weight:600;font-family:var(--mono);font-size:11px">hasCapability →</span>
+      <span style="padding:4px 10px;background:var(--teal-bg);border:1px solid var(--teal-border);border-radius:6px;color:var(--teal);font-weight:500">ProductForm</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="padding:4px 10px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:6px;color:var(--purple);font-weight:500;min-width:170px">ContractManufacturer</span>
+      <span style="color:var(--teal);font-weight:600;font-family:var(--mono);font-size:11px">holdsCertification →</span>
+      <span style="padding:4px 10px;background:var(--teal-bg);border:1px solid var(--teal-border);border-radius:6px;color:var(--teal);font-weight:500">Certification</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="padding:4px 10px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;color:var(--amber);font-weight:500;min-width:170px">SupplementBrand</span>
+      <span style="color:var(--teal);font-weight:600;font-family:var(--mono);font-size:11px">submitsRFP →</span>
+      <span style="padding:4px 10px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;color:var(--amber);font-weight:500">RFP</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="padding:4px 10px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:6px;color:var(--accent);font-weight:500;min-width:170px">Match</span>
+      <span style="color:var(--teal);font-weight:600;font-family:var(--mono);font-size:11px">hasManufacturer →</span>
+      <span style="padding:4px 10px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:6px;color:var(--purple);font-weight:500">ContractManufacturer</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="padding:4px 10px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:6px;color:var(--accent);font-weight:500;min-width:170px">Match</span>
+      <span style="color:var(--teal);font-weight:600;font-family:var(--mono);font-size:11px">hasRFP →</span>
+      <span style="padding:4px 10px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;color:var(--amber);font-weight:500">RFP</span>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-amber">!</span> Add constraints as you go</div>
+  <div class="card-body"><p>Once you have the properties, annotate them with cardinality and logical rules. These become your axioms — the reasoning rules you'll inject into the LLM later.</p></div>
+  <div class="code-block"><span class="t-comment"># How many? — cardinality</span>
+<span class="t-class">supp:Match</span> <span class="t-keyword">rdfs:subClassOf</span> [
+  <span class="t-keyword">owl:onProperty</span>   <span class="t-class">supp:hasManufacturer</span> ;
+  <span class="t-keyword">owl:cardinality</span>  <span class="t-num">1</span>   <span class="t-comment"># exactly 1, never 2</span>
+] .
+
+<span class="t-comment"># Can it be both? — disjoint classes</span>
+<span class="t-class">supp:ContractManufacturer</span>
+  <span class="t-keyword">owl:disjointWith</span> <span class="t-class">supp:SupplementBrand</span> .</div>
+</div>
+`
+},
+{
+  phase:'Phase 2 — Plan',phaseClass:'phase-2',num:5,
+  label:'Step 3: Write the Turtle file',
+  title:'Step 3 — Write the Turtle file',
+  sub:'Turtle (.ttl) is the most readable format for OWL ontologies. Think of it as the source code for your knowledge graph. Here\'s the full minimal ontology for the supplement marketplace.',
+  content:`
+<div class="callout callout-blue"><strong>You only need to write this once.</strong> The Turtle file is your source of truth. Everything else — summaries, prompts, embeddings — is generated from it.</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">ttl</span> Full minimal ontology</div>
+  <div class="code-block"><span class="t-comment"># supplement.ttl</span>
+<span class="t-keyword">@prefix</span> supp: &lt;https://suppmarket.io/ontology#&gt; .
+<span class="t-keyword">@prefix</span> owl:  &lt;http://www.w3.org/2002/07/owl#&gt; .
+<span class="t-keyword">@prefix</span> rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt; .
+<span class="t-keyword">@prefix</span> xsd:  &lt;http://www.w3.org/2001/XMLSchema#&gt; .
+
+<span class="t-comment"># ── Classes ──────────────────────────────</span>
+<span class="t-class">supp:Organization</span>          <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .
+<span class="t-class">supp:ContractManufacturer</span>  <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> ;
+  <span class="t-keyword">rdfs:subClassOf</span> <span class="t-class">supp:Organization</span> ;
+  <span class="t-keyword">owl:disjointWith</span> <span class="t-class">supp:SupplementBrand</span> .
+
+<span class="t-class">supp:SupplementBrand</span>  <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> ;
+  <span class="t-keyword">rdfs:subClassOf</span> <span class="t-class">supp:Organization</span> .
+
+<span class="t-class">supp:RFP</span>   <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .
+<span class="t-class">supp:Match</span> <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .
+
+<span class="t-comment"># ── Enumeration classes ───────────────────</span>
+<span class="t-class">supp:ProductForm</span>   <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .
+<span class="t-class">supp:Certification</span> <span class="t-keyword">a</span> <span class="t-class">owl:Class</span> .
+
+<span class="t-class">supp:Capsule</span> <span class="t-keyword">a</span> <span class="t-class">supp:ProductForm</span> .
+<span class="t-class">supp:Softgel</span> <span class="t-keyword">a</span> <span class="t-class">supp:ProductForm</span> .
+<span class="t-class">supp:Powder</span>  <span class="t-keyword">a</span> <span class="t-class">supp:ProductForm</span> .
+<span class="t-class">supp:GMP</span>     <span class="t-keyword">a</span> <span class="t-class">supp:Certification</span> .
+<span class="t-class">supp:NSF</span>     <span class="t-keyword">a</span> <span class="t-class">supp:Certification</span> .
+
+<span class="t-comment"># ── Object Properties ─────────────────────</span>
+<span class="t-class">supp:hasCapability</span>
+  <span class="t-keyword">a</span> <span class="t-class">owl:ObjectProperty</span> ;
+  <span class="t-keyword">rdfs:domain</span> <span class="t-class">supp:ContractManufacturer</span> ;
+  <span class="t-keyword">rdfs:range</span>  <span class="t-class">supp:ProductForm</span> .
+
+<span class="t-class">supp:holdsCertification</span>
+  <span class="t-keyword">a</span> <span class="t-class">owl:ObjectProperty</span> ;
+  <span class="t-keyword">rdfs:domain</span> <span class="t-class">supp:ContractManufacturer</span> ;
+  <span class="t-keyword">rdfs:range</span>  <span class="t-class">supp:Certification</span> .
+
+<span class="t-class">supp:hasManufacturer</span>
+  <span class="t-keyword">a</span>            <span class="t-class">owl:ObjectProperty</span> ,
+               <span class="t-class">owl:FunctionalProperty</span> ;  <span class="t-comment"># exactly 1</span>
+  <span class="t-keyword">rdfs:domain</span>  <span class="t-class">supp:Match</span> ;
+  <span class="t-keyword">rdfs:range</span>   <span class="t-class">supp:ContractManufacturer</span> .
+
+<span class="t-comment"># ── Datatype Properties ───────────────────</span>
+<span class="t-class">supp:hasMOQ</span>
+  <span class="t-keyword">a</span> <span class="t-class">owl:DatatypeProperty</span> ;
+  <span class="t-keyword">rdfs:domain</span> <span class="t-class">supp:ContractManufacturer</span> ;
+  <span class="t-keyword">rdfs:range</span>  <span class="t-class">xsd:integer</span> .
+
+<span class="t-class">supp:hasScore</span>
+  <span class="t-keyword">a</span> <span class="t-class">owl:DatatypeProperty</span> ;
+  <span class="t-keyword">rdfs:domain</span> <span class="t-class">supp:Match</span> ;
+  <span class="t-keyword">rdfs:range</span>  <span class="t-class">xsd:float</span> .</div>
+</div>
+`
+},
+{
+  phase:'Phase 3 — Connect',phaseClass:'phase-3',num:6,
+  label:'Convert ontology to English',
+  title:'Convert ontology to English',
+  sub:'LLMs understand natural language better than Turtle syntax. The key step is converting your ontology into a structured English summary that you inject into the system prompt.',
+  content:`
+<div class="callout callout-amber"><strong>Rule:</strong> The Turtle file is source of truth. The English summary is what actually goes into the LLM context. Never inject raw Turtle — convert it first.</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">py</span> Auto-generate from rdflib</div>
+  <div class="code-block"><span class="t-comment"># ontology_to_prompt.py</span>
+<span class="t-keyword">from</span> rdflib <span class="t-keyword">import</span> Graph, Namespace, RDF, RDFS, OWL
+
+<span class="t-eng">SUPP</span> = Namespace(<span class="t-string">"https://suppmarket.io/ontology#"</span>)
+
+<span class="t-keyword">def</span> <span class="t-eng">ontology_to_english</span>(ttl_path: str) -> str:
+    g = Graph()
+    g.parse(ttl_path, format=<span class="t-string">"turtle"</span>)
+    lines = [<span class="t-string">"You reason over a supplement marketplace ontology.\n"</span>]
+
+    <span class="t-comment"># Classes</span>
+    lines.append(<span class="t-string">"## Classes"</span>)
+    <span class="t-keyword">for</span> cls <span class="t-keyword">in</span> g.subjects(RDF.type, OWL.Class):
+        name = str(cls).split(<span class="t-string">"#"</span>)[-<span class="t-num">1</span>]
+        parent = g.value(cls, RDFS.subClassOf)
+        line = <span class="t-string">f"- **{name}**"</span>
+        <span class="t-keyword">if</span> parent:
+            line += <span class="t-string">f" (subclass of {str(parent).split('#')[-1]})"</span>
+        lines.append(line)
+
+    <span class="t-comment"># Properties</span>
+    lines.append(<span class="t-string">"\n## Properties"</span>)
+    <span class="t-keyword">for</span> prop <span class="t-keyword">in</span> g.subjects(RDF.type, OWL.ObjectProperty):
+        name   = str(prop).split(<span class="t-string">"#"</span>)[-<span class="t-num">1</span>]
+        domain = g.value(prop, RDFS.domain)
+        range_ = g.value(prop, RDFS.range)
+        d = str(domain).split(<span class="t-string">"#"</span>)[-<span class="t-num">1</span>] <span class="t-keyword">if</span> domain <span class="t-keyword">else</span> <span class="t-string">"?"</span>
+        r = str(range_).split(<span class="t-string">"#"</span>)[-<span class="t-num">1</span>] <span class="t-keyword">if</span> range_ <span class="t-keyword">else</span> <span class="t-string">"?"</span>
+        lines.append(<span class="t-string">f"- **{name}**: {d} → {r}"</span>)
+
+    <span class="t-keyword">return</span> <span class="t-string">"\n"</span>.join(lines)</div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-teal">out</span> What it produces</div>
+  <div class="prompt-preview"><span class="pp-system">You reason over a supplement marketplace ontology.
+
+</span><span class="pp-em">## Classes</span>
+<span class="pp-text">- </span><span class="pp-class">ContractManufacturer</span><span class="pp-text"> (subclass of Organization)
+- </span><span class="pp-class">SupplementBrand</span><span class="pp-text"> (subclass of Organization)
+- </span><span class="pp-class">RFP</span>
+<span class="pp-text">- </span><span class="pp-class">Match</span>
+<span class="pp-text">- </span><span class="pp-class">ProductForm</span><span class="pp-text"> — instances: Capsule, Softgel, Powder, Tablet, Gummy
+- </span><span class="pp-class">Certification</span><span class="pp-text"> — instances: GMP, NSF, Halal, Kosher
+
+</span><span class="pp-em">## Properties</span>
+<span class="pp-text">- </span><span class="pp-prop">hasCapability</span><span class="pp-text">: ContractManufacturer → ProductForm (many-to-many)
+- </span><span class="pp-prop">holdsCertification</span><span class="pp-text">: ContractManufacturer → Certification (many-to-many)
+- </span><span class="pp-prop">hasManufacturer</span><span class="pp-text">: Match → ContractManufacturer (exactly 1)
+- </span><span class="pp-prop">hasRFP</span><span class="pp-text">: Match → RFP (exactly 1)
+- </span><span class="pp-prop">hasMOQ</span><span class="pp-text">: ContractManufacturer → integer
+- </span><span class="pp-prop">hasScore</span><span class="pp-text">: Match → float (0.0–1.0)
+
+</span><span class="pp-em">## Rules</span>
+<span class="pp-text">- ContractManufacturer and SupplementBrand are disjoint — no entity can be both.
+- A Match must reference exactly 1 manufacturer and exactly 1 RFP.
+- When matching, check hasCapability overlap with RFP.requiresProductForm.
+  Zero overlap = hard disqualification. Partial overlap = score penalty.</span></div>
+</div>
+`
+},
+{
+  phase:'Phase 3 — Connect',phaseClass:'phase-3',num:7,
+  label:'Inject into the LLM',
+  title:'Inject into the LLM',
+  sub:'Now wire the English summary into your API calls. The system prompt carries the ontology context; the user message carries the specific task.',
+  content:`
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">1</span> Strategy: which part of the prompt?</div>
+  <table class="compare-table">
+    <tr><th>Prompt section</th><th>What goes here</th><th>Why</th></tr>
+    <tr><td><strong>System prompt</strong></td><td>Ontology summary (classes, properties, rules)</td><td>Stable context — same for all calls</td></tr>
+    <tr><td><strong>User message</strong></td><td>Specific task + relevant data</td><td>Changes per request</td></tr>
+    <tr><td><strong>Assistant message</strong></td><td>Structured output following the schema</td><td>Constrained by ontology rules</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-teal">py</span> Full FastAPI integration</div>
+  <div class="code-block"><span class="t-comment"># matching_service.py</span>
+<span class="t-keyword">import</span> anthropic
+<span class="t-keyword">from</span> ontology_to_prompt <span class="t-keyword">import</span> ontology_to_english
+
+<span class="t-comment"># Load once at startup</span>
+<span class="t-eng">ONTOLOGY_CONTEXT</span> = ontology_to_english(<span class="t-string">"ontology/supplement.ttl"</span>)
+
+<span class="t-eng">SYSTEM_PROMPT</span> = <span class="t-string">f"""
+{ONTOLOGY_CONTEXT}
+
+When generating a Match:
+1. Verify hasCapability covers all requiresProductForm values
+2. Check holdsCertification satisfies all requiresCertification values
+3. Confirm hasMOQ ≤ targetMOQ
+4. Output valid JSON matching the Match schema
+"""</span>
+
+<span class="t-keyword">async def</span> <span class="t-eng">generate_match</span>(cm: dict, rfp: dict) -> dict:
+    client = anthropic.Anthropic()
+
+    response = client.messages.create(
+        model=<span class="t-string">"claude-sonnet-4-5"</span>,
+        max_tokens=<span class="t-num">1024</span>,
+        system=<span class="t-eng">SYSTEM_PROMPT</span>,
+        messages=[{
+            <span class="t-string">"role"</span>: <span class="t-string">"user"</span>,
+            <span class="t-string">"content"</span>: <span class="t-string">f"""
+Evaluate this manufacturer–RFP pair and generate a Match.
+
+ContractManufacturer:
+{cm}
+
+RFP:
+{rfp}
+
+Output JSON: {{
+  "hasManufacturer": "...",
+  "hasRFP": "...",
+  "hasScore": 0.0,
+  "hasExplanation": "..."
+}}"""</span>
+        }]
+    )
+    <span class="t-keyword">return</span> json.loads(response.content[<span class="t-num">0</span>].text)</div>
+</div>
+
+<div class="callout callout-teal"><strong>The pattern:</strong> Ontology → English summary → system prompt → LLM output that respects your domain schema. Every call gets the same grounding; every output is constrained by the same rules.</div>
+`
+},
+{
+  phase:'Phase 3 — Connect',phaseClass:'phase-3',num:8,
+  label:'Strategy 2: Ontology RAG',
+  title:'Strategy 2 — Ontology RAG (for larger ontologies)',
+  sub:'When your ontology grows past ~50 classes, injecting everything every time becomes expensive. Instead, embed each class definition and retrieve only what\'s relevant to the current query.',
+  content:`
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">≈</span> How it works</div>
+  <div class="flow" style="flex-wrap:wrap;gap:4px">
+    <div class="flow-box">Query arrives</div><div class="flow-arr">→</div>
+    <div class="flow-box">Embed query</div><div class="flow-arr">→</div>
+    <div class="flow-box">pgvector similarity search</div><div class="flow-arr">→</div>
+    <div class="flow-box">Top-k class definitions</div><div class="flow-arr">→</div>
+    <div class="flow-box">Inject into prompt</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-teal">py</span> Store class embeddings in pgvector</div>
+  <div class="code-block"><span class="t-comment"># embed_ontology.py</span>
+<span class="t-keyword">import</span> psycopg2, anthropic
+<span class="t-keyword">from</span> rdflib <span class="t-keyword">import</span> Graph, RDF, OWL
+
+<span class="t-keyword">def</span> <span class="t-eng">embed_ontology</span>(ttl_path: str, conn):
+    g = Graph()
+    g.parse(ttl_path, format=<span class="t-string">"turtle"</span>)
+    client = anthropic.Anthropic()
+
+    <span class="t-keyword">for</span> cls <span class="t-keyword">in</span> g.subjects(RDF.type, OWL.Class):
+        name = str(cls).split(<span class="t-string">"#"</span>)[-<span class="t-num">1</span>]
+        <span class="t-comment"># Build a rich text representation</span>
+        text = build_class_text(g, cls)
+
+        <span class="t-comment"># Embed using the same model you use for queries</span>
+        emb = client.embeddings.create(
+            model=<span class="t-string">"voyage-3"</span>, input=text
+        ).embeddings[<span class="t-num">0</span>]
+
+        <span class="t-comment"># Store in pgvector</span>
+        conn.execute(<span class="t-string">"""
+            INSERT INTO ontology_embeddings
+              (class_name, text, embedding)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (class_name) DO UPDATE
+              SET text=EXCLUDED.text,
+                  embedding=EXCLUDED.embedding
+        """</span>, (name, text, emb))
+
+<span class="t-keyword">def</span> <span class="t-eng">retrieve_relevant_classes</span>(query: str, conn, k=<span class="t-num">5</span>) -> str:
+    client = anthropic.Anthropic()
+    q_emb = client.embeddings.create(
+        model=<span class="t-string">"voyage-3"</span>, input=query
+    ).embeddings[<span class="t-num">0</span>]
+
+    rows = conn.execute(<span class="t-string">"""
+        SELECT text FROM ontology_embeddings
+        ORDER BY embedding &lt;=&gt; %s LIMIT %s
+    """</span>, (q_emb, k)).fetchall()
+
+    <span class="t-keyword">return</span> <span class="t-string">"\n"</span>.join(r[<span class="t-num">0</span>] <span class="t-keyword">for</span> r <span class="t-keyword">in</span> rows)</div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-amber">≈</span> When to use which strategy</div>
+  <table class="compare-table">
+    <tr><th>Strategy</th><th>Ontology size</th><th>Token cost</th><th>When</th></tr>
+    <tr><td>Full injection</td><td>&lt; 50 classes</td><td>~800–2000</td><td>MVP, small domain</td></tr>
+    <tr><td>English summary</td><td>50–200 classes</td><td>~400–800</td><td>Growing domain</td></tr>
+    <tr><td>Ontology RAG</td><td>200+ classes</td><td>~200–400</td><td>Production, large schema</td></tr>
+  </table>
+</div>
+`
+},
+{
+  phase:'Phase 4 — Validate',phaseClass:'phase-4',num:9,
+  label:'Validate LLM outputs',
+  title:'Validate LLM outputs against the ontology',
+  sub:'The LLM may not always respect the constraints. Add a validation step that checks outputs against your ontology rules before they enter your database.',
+  content:`
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-purple">✓</span> Validation pipeline</div>
+  <div class="flow" style="flex-wrap:wrap;gap:4px">
+    <div class="flow-box">LLM output (JSON)</div><div class="flow-arr">→</div>
+    <div class="flow-box">Parse to RDF graph</div><div class="flow-arr">→</div>
+    <div class="flow-box">Run ontology rules</div><div class="flow-arr">→</div>
+    <div class="flow-box" style="border-color:var(--teal-border);color:var(--teal)">Valid → save</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-purple">py</span> Validate with rdflib + OWL-RL</div>
+  <div class="code-block"><span class="t-comment"># validator.py</span>
+<span class="t-keyword">from</span> rdflib <span class="t-keyword">import</span> Graph, URIRef
+<span class="t-keyword">from</span> rdflib.namespace <span class="t-keyword">import</span> RDF
+
+<span class="t-keyword">def</span> <span class="t-eng">validate_match</span>(match_json: dict, ontology_path: str) -> list[str]:
+    errors = []
+
+    <span class="t-comment"># Rule 1: cardinality — hasManufacturer must be exactly 1</span>
+    <span class="t-keyword">if</span> <span class="t-string">"hasManufacturer"</span> <span class="t-keyword">not in</span> match_json:
+        errors.append(<span class="t-string">"Missing hasManufacturer (cardinality=1 violated)"</span>)
+
+    <span class="t-comment"># Rule 2: score must be 0.0–1.0</span>
+    score = match_json.get(<span class="t-string">"hasScore"</span>, -<span class="t-num">1</span>)
+    <span class="t-keyword">if not</span> (<span class="t-num">0.0</span> &lt;= score &lt;= <span class="t-num">1.0</span>):
+        errors.append(<span class="t-string">f"hasScore {score} out of range [0.0, 1.0]"</span>)
+
+    <span class="t-comment"># Rule 3: capability overlap</span>
+    cm_caps = set(match_json.get(<span class="t-string">"cm_capabilities"</span>, []))
+    rfp_req  = set(match_json.get(<span class="t-string">"rfp_requires"</span>, []))
+    <span class="t-keyword">if not</span> rfp_req.issubset(cm_caps):
+        missing = rfp_req - cm_caps
+        errors.append(<span class="t-string">f"Capability gap: CM missing {missing}"</span>)
+
+    <span class="t-keyword">return</span> errors
+
+<span class="t-comment"># In your API endpoint:</span>
+<span class="t-keyword">async def</span> <span class="t-eng">create_match_endpoint</span>(cm_id: str, rfp_id: str):
+    match = <span class="t-keyword">await</span> generate_match(cm_id, rfp_id)
+    errors = validate_match(match, <span class="t-string">"ontology/supplement.ttl"</span>)
+
+    <span class="t-keyword">if</span> errors:
+        <span class="t-comment"># Re-prompt with error context</span>
+        match = <span class="t-keyword">await</span> generate_match(cm_id, rfp_id, errors=errors)
+
+    <span class="t-keyword">return</span> match</div>
+</div>
+
+<div class="callout callout-teal"><strong>Tip:</strong> The validation errors become the next prompt's context. If the LLM produces a Match with a missing RFP reference, pass that error back as "Your previous output violated: Missing hasRFP. Please regenerate." This self-correcting loop usually resolves issues in 1–2 retries.</div>
+`
+},
+{
+  phase:'Phase 4 — Validate',phaseClass:'phase-4',num:10,
+  label:'Full picture & next steps',
+  title:'Full picture',
+  sub:'Here\'s everything together — from raw domain knowledge to a running LLM pipeline grounded in your ontology.',
+  content:`
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-blue">→</span> The complete pipeline</div>
+  <div style="display:flex;flex-direction:column;gap:0;margin-top:4px">
+    <div style="display:flex;gap:0;align-items:stretch">
+      <div style="width:3px;background:var(--accent);border-radius:3px;flex-shrink:0;margin-right:16px"></div>
+      <div style="flex:1">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="card" style="margin:0"><div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;font-family:var(--mono)">STEP 1 — PLAN</div><div style="font-size:13px;color:var(--text2)">List domain nouns → classes. List verbs → properties. Write constraints → axioms.</div></div>
+          <div class="card" style="margin:0"><div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;font-family:var(--mono)">STEP 2 — WRITE</div><div style="font-size:13px;color:var(--text2)">Author <code style="font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 4px;border-radius:3px">supplement.ttl</code> in Turtle format. This is your source of truth.</div></div>
+          <div class="card" style="margin:0"><div style="font-size:11px;font-weight:600;color:var(--teal);margin-bottom:4px;font-family:var(--mono)">STEP 3 — CONVERT</div><div style="font-size:13px;color:var(--text2)">Run <code style="font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 4px;border-radius:3px">ontology_to_english()</code> to generate the system prompt fragment.</div></div>
+          <div class="card" style="margin:0"><div style="font-size:11px;font-weight:600;color:var(--teal);margin-bottom:4px;font-family:var(--mono)">STEP 4 — INJECT</div><div style="font-size:13px;color:var(--text2)">Prepend the English summary to every system prompt. LLM now knows your domain vocabulary.</div></div>
+          <div class="card" style="margin:0"><div style="font-size:11px;font-weight:600;color:var(--amber);margin-bottom:4px;font-family:var(--mono)">STEP 5 — VALIDATE</div><div style="font-size:13px;color:var(--text2)">Check outputs against ontology rules. Re-prompt with violations. Save only valid records.</div></div>
+          <div class="card" style="margin:0"><div style="font-size:11px;font-weight:600;color:var(--purple);margin-bottom:4px;font-family:var(--mono)">STEP 6 — EVOLVE</div><div style="font-size:13px;color:var(--text2)">Add new classes, properties, axioms to the .ttl file. Re-generate summaries. LLM updates automatically.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="ct-icon icon-teal">✓</span> What you now have</div>
+  <ul class="checklist">
+    <li><span class="check-icon ci-ok">✓</span>A versioned, human-readable domain vocabulary in supplement.ttl</li>
+    <li><span class="check-icon ci-ok">✓</span>An LLM that understands your entities, properties and rules without hallucinating your schema</li>
+    <li><span class="check-icon ci-ok">✓</span>Structured outputs that can be validated against the ontology before saving</li>
+    <li><span class="check-icon ci-ok">✓</span>A separation of concerns: domain logic lives in the ontology, not scattered in prompts</li>
+    <li><span class="check-icon ci-info">→</span>Next: add owl:TransitiveProperty for region hierarchy matching</li>
+    <li><span class="check-icon ci-info">→</span>Next: add owl:propertyChainAxiom for regulatory compliance inference</li>
+    <li><span class="check-icon ci-warn">!</span>When ontology exceeds 50 classes, switch to the Ontology RAG strategy</li>
+  </ul>
+</div>
+
+<div class="callout callout-blue"><strong>The big idea:</strong> Your ontology is the single source of truth for how your domain works. The LLM is the reasoning engine. The connection between them is the English summary in the system prompt. Keep these three things separate and your AI system stays maintainable as it grows.</div>
+`
+}
+];
+
+const phases = [
+  {label:'Phase 1 — Understand',steps:[1,2]},
+  {label:'Phase 2 — Plan',steps:[3,4,5]},
+  {label:'Phase 3 — Connect',steps:[6,7,8]},
+  {label:'Phase 4 — Validate',steps:[9,10]},
+];
+
+let current = 0;
+
+function renderNav() {
+  const tree = document.getElementById('nav-tree');
+  tree.innerHTML = phases.map(ph => `
+    <div class="phase-group">
+      <div class="phase-label">${ph.label}</div>
+      ${ph.steps.map(si => {
+        const s = steps[si-1];
+        const done = si-1 < current;
+        const active = si-1 === current;
+        return `<button class="step-btn ${active?'active':''} ${done?'done':''}" onclick="goTo(${si-1})">
+          <span class="snum">${done?'✓':s.num}</span>
+          <span class="slabel">${s.label}</span>
+        </button>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+function renderContent() {
+  const s = steps[current];
+  const pct = Math.round(((current+1)/steps.length)*100);
+  document.getElementById('progress').style.width = pct+'%';
+
+  document.getElementById('main-content').innerHTML = `
+    <span class="phase-pill ${s.phaseClass}">${s.phase}</span>
+    <h2 class="step-title">${s.title}</h2>
+    <p class="step-sub">${s.sub}</p>
+    ${s.content}
+    <div class="step-nav">
+      <button class="nav-btn nav-prev" onclick="goTo(${current-1})" ${current===0?'disabled':''}>← Previous</button>
+      <button class="nav-btn nav-next" onclick="goTo(${current+1})" ${current===steps.length-1?'disabled':''}>Next →</button>
+    </div>
+  `;
+}
+
+function goTo(i) {
+  if(i < 0 || i >= steps.length) return;
+  current = i;
+  renderNav();
+  renderContent();
+  document.getElementById('main-content').scrollTop = 0;
+  window.scrollTo(0,0);
+}
+
+renderNav();
+renderContent();
+</script>
+</body>
+</html>

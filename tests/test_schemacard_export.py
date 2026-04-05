@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -16,6 +14,7 @@ from ontobuilder.serialization.schemacard_io import export_schema_card, save_sch
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse(onto: Ontology, **kwargs) -> dict:
     """Export and parse to dict in one step."""
     return json.loads(export_schema_card(onto, **kwargs))
@@ -24,6 +23,7 @@ def _parse(onto: Ontology, **kwargs) -> dict:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_schemacard_valid_json(pet_store_ontology):
     """export_schema_card returns a valid JSON string."""
@@ -35,8 +35,16 @@ def test_schemacard_valid_json(pet_store_ontology):
 def test_schemacard_required_keys(pet_store_ontology):
     """Output has ALL required top-level keys."""
     d = _parse(pet_store_ontology)
-    required = {"version", "namespace", "classes", "datatype_properties",
-                "object_properties", "events", "aliases", "warnings"}
+    required = {
+        "version",
+        "namespace",
+        "classes",
+        "datatype_properties",
+        "object_properties",
+        "events",
+        "aliases",
+        "warnings",
+    }
     assert required.issubset(d.keys()), f"Missing keys: {required - d.keys()}"
 
 
@@ -148,7 +156,11 @@ def test_schemacard_namespace_custom(pet_store_ontology):
 def test_schemacard_namespace_default(pet_store_ontology):
     """Default namespace is derived from ontology name."""
     d = _parse(pet_store_ontology)
-    assert "Pet Store" in d["namespace"] or "PetStore" in d["namespace"] or "Pet_Store" in d["namespace"]
+    assert (
+        "Pet Store" in d["namespace"]
+        or "PetStore" in d["namespace"]
+        or "Pet_Store" in d["namespace"]
+    )
 
 
 def test_schemacard_save_to_file(pet_store_ontology, tmp_path):
@@ -167,9 +179,7 @@ def test_schemacard_datatype_properties_flattened(pet_store_ontology):
     """datatype_properties are flattened: one entry per property per concept."""
     d = _parse(pet_store_ontology)
     # pet_store has: Animal(5 props) + Dog(1 prop) + Customer(1 prop) = 7 total
-    expected_count = sum(
-        len(c.properties) for c in pet_store_ontology.concepts.values()
-    )
+    expected_count = sum(len(c.properties) for c in pet_store_ontology.concepts.values())
     assert len(d["datatype_properties"]) == expected_count
 
 

@@ -27,27 +27,37 @@ project_app = type("_ProjectCommands", (), {"registered_commands": _commands})()
 
 def _register(name: str):
     """Decorator to register a command."""
+
     def decorator(func):
         info = typer.models.CommandInfo(name=name, callback=func)
         _commands.append((name, info))
         return func
+
     return decorator
 
 
 @_register("init")
 def init_project(
     name: str = typer.Argument(..., help="Name of the ontology"),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite an existing ontology file in the current directory.",
+    ),
 ):
     """Initialize a new ontology project in the current directory."""
     existing = find_onto_file()
-    if existing:
-        typer.echo(f"An ontology file already exists: {existing.name}")
+    if existing and not force:
+        typer.echo(
+            f"An ontology file already exists: {existing.name}. "
+            "Use --force to overwrite it, or run init in a new directory."
+        )
         raise typer.Exit(1)
 
     onto = Ontology(name)
-    path = Path(DEFAULT_FILE)
+    path = existing if existing and force else Path(DEFAULT_FILE)
     save_yaml(onto, path)
-    typer.echo(f"Created '{path}' — ontology '{name}' is ready!")
+    typer.echo(f"Created '{path}' - ontology '{name}' is ready!")
     typer.echo("Next: try 'onto concept add Animal --description \"A living creature\"'")
 
 
@@ -87,7 +97,7 @@ def load(
     onto = load_yaml(src)
     dest = Path(DEFAULT_FILE)
     save_yaml(onto, dest)
-    typer.echo(f"Loaded ontology '{onto.name}' from {file} → {dest}")
+    typer.echo(f"Loaded ontology '{onto.name}' from {file} -> {dest}")
 
 
 @_register("export")

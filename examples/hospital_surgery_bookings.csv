@@ -1,0 +1,11 @@
+booking_id,patient_id,patient_name,surgeon_id,surgeon_name,procedure_code,procedure_name,estimated_duration_minutes,room_code,hospital_code,anesthesia_ready,start_date,end_date,booking_status,priority_level
+BK-001,P-101,Kim Minjun,S-201,Dr. Park,PROC-50,Appendectomy,90,OR-1,H-001,true,2026-04-10,2026-04-10,confirmed,high
+BK-002,P-102,Lee Soyeon,S-202,Dr. Choi,PROC-51,Knee Replacement,180,OR-2,H-001,true,2026-04-11,2026-04-11,confirmed,medium
+BK-003,P-103,Park Jiwoo,S-201,Dr. Park,PROC-52,Hernia Repair,60,OR-1,H-001,true,2026-04-12,2026-04-12,pending,low
+BK-004,P-104,Choi Hyunwoo,S-203,Dr. Kim,PROC-53,Cataract Surgery,45,OR-3,H-002,false,2026-04-13,2026-04-13,confirmed,medium
+BK-005,P-105,Jung Eunji,S-202,Dr. Choi,PROC-54,Hip Replacement,210,OR-2,H-001,true,2026-04-14,2026-04-14,pending,high
+BK-006,P-101,Kim Minjun,S-204,Dr. Lee,PROC-55,Gallbladder Removal,120,OR-4,H-002,true,2026-04-15,2026-04-15,confirmed,medium
+BK-007,P-106,Han Doyeon,S-201,Dr. Park,PROC-50,Appendectomy,90,OR-1,H-001,true,2026-04-16,2026-04-16,cancelled,low
+BK-008,P-107,Yoon Seojin,S-203,Dr. Kim,PROC-56,Tonsillectomy,30,OR-3,H-002,false,2026-04-17,2026-04-17,confirmed,low
+BK-009,P-108,Kang Jihoon,S-205,Dr. Yoon,PROC-57,ACL Reconstruction,150,OR-5,H-001,true,2026-04-18,2026-04-18,pending,high
+BK-010,P-109,Shin Yuna,S-202,Dr. Choi,PROC-51,Knee Replacement,180,OR-2,H-001,true,2026-04-19,2026-04-19,confirmed,medium

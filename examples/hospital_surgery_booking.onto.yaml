@@ -1,0 +1,95 @@
+ontology:
+  name: HospitalSurgeryBooking
+  description: Operating room booking and allocation for hospital surgeries
+concepts:
+  - name: Person
+    description: A person involved in surgery operations
+    properties:
+      - name: full_name
+        type: string
+        required: true
+  - name: Patient
+    description: A person receiving a surgery
+    parent: Person
+    properties:
+      - name: patient_id
+        type: string
+        required: true
+  - name: Provider
+    description: A healthcare provider
+    parent: Person
+  - name: Surgeon
+    description: A surgeon who performs surgery procedures
+    parent: Provider
+    properties:
+      - name: license_id
+        type: string
+        required: true
+  - name: Facility
+    description: A healthcare facility
+  - name: Hospital
+    description: A hospital organization
+    parent: Facility
+    properties:
+      - name: hospital_code
+        type: string
+        required: true
+  - name: SurgeryRoom
+    description: A dedicated operating room
+    parent: Facility
+    properties:
+      - name: room_code
+        type: string
+        required: true
+      - name: anesthesia_ready
+        type: bool
+  - name: SurgeryProcedure
+    description: A surgical procedure to be performed
+    properties:
+      - name: procedure_code
+        type: string
+        required: true
+      - name: estimated_duration_minutes
+        type: int
+  - name: TimeSlot
+    description: A discrete bookable surgery timeslot
+    properties:
+      - name: start_date
+        type: date
+        required: true
+      - name: end_date
+        type: date
+        required: true
+  - name: SurgeryBooking
+    description: A booking request and allocation record for surgery
+    properties:
+      - name: booking_status
+        type: string
+        required: true
+      - name: priority_level
+        type: string
+relations:
+  - name: booked_for_patient
+    source: SurgeryBooking
+    target: Patient
+    cardinality: many-to-one
+  - name: booked_procedure
+    source: SurgeryBooking
+    target: SurgeryProcedure
+    cardinality: many-to-one
+  - name: assigned_room
+    source: SurgeryBooking
+    target: SurgeryRoom
+    cardinality: many-to-one
+  - name: assigned_surgeon
+    source: SurgeryBooking
+    target: Surgeon
+    cardinality: many-to-one
+  - name: scheduled_in_slot
+    source: SurgeryBooking
+    target: TimeSlot
+    cardinality: one-to-one
+  - name: room_in_hospital
+    source: SurgeryRoom
+    target: Hospital
+    cardinality: many-to-one

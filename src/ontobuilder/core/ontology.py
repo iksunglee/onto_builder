@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+from typing import Any
+
 from ontobuilder.core.model import Concept, Property, Relation, Instance
 from ontobuilder.core.validation import (
     ValidationError,
     validate_concept_name_unique,
-    validate_relation_name_unique,
-    validate_parent_exists,
     validate_concept_exists,
+    validate_parent_exists,
     validate_property_type,
+    validate_relation_name_unique,
 )
+from ontobuilder.graph.base import GraphBackend
 
 
 class Ontology:
@@ -22,7 +26,7 @@ class Ontology:
         self.concepts: dict[str, Concept] = {}
         self.relations: dict[str, Relation] = {}
         self.instances: dict[str, Instance] = {}
-        self._backend: object | None = None
+        self._backend: GraphBackend | None = None
 
     # -- Concepts --
 
@@ -53,10 +57,7 @@ class Ontology:
             if c.parent == name:
                 c.parent = None
         # Remove relations referencing this concept
-        to_remove = [
-            r for r in self.relations.values()
-            if r.source == name or r.target == name
-        ]
+        to_remove = [r for r in self.relations.values() if r.source == name or r.target == name]
         for r in to_remove:
             del self.relations[r.name]
         # Remove instances of this concept
@@ -121,7 +122,11 @@ class Ontology:
     # -- Instances --
 
     def add_instance(
-        self, name: str, *, concept: str, properties: dict | None = None
+        self,
+        name: str,
+        *,
+        concept: str,
+        properties: dict[str, Any] | None = None,
     ) -> Instance:
         validate_concept_exists(self, concept)
         if name in self.instances:
@@ -136,7 +141,7 @@ class Ontology:
 
     # -- Graph backend --
 
-    def set_backend(self, backend: object) -> None:
+    def set_backend(self, backend: GraphBackend) -> None:
         """Attach a graph backend and sync current data into it."""
         self._backend = backend
         # Sync existing concepts
@@ -156,35 +161,55 @@ class Ontology:
 
     def print_tree(self) -> str:
         """Return an ASCII tree of the concept hierarchy."""
-        roots = [c for c in self.concepts.values() if c.parent is None]
-        roots.sort(key=lambda c: c.name)
+        children_by_parent: dict[str | None, list[Concept]] = defaultdict(list)
+        for concept in self.concepts.values():
+            children_by_parent[concept.parent].append(concept)
+
+        for concepts in children_by_parent.values():
+            concepts.sort(key=lambda concept: concept.name)
+
+        roots = children_by_parent.get(None, [])
         lines: list[str] = [f"Ontology: {self.name}"]
         for i, root in enumerate(roots):
             is_last = i == len(roots) - 1
-            self._print_subtree(root, lines, prefix="", is_last=is_last)
+            self._print_subtree(
+                root,
+                lines,
+                prefix="",
+                is_last=is_last,
+                children_by_parent=children_by_parent,
+            )
         tree = "\n".join(lines)
         return tree
 
     def _print_subtree(
-        self, concept: Concept, lines: list[str], prefix: str, is_last: bool
+        self,
+        concept: Concept,
+        lines: list[str],
+        prefix: str,
+        is_last: bool,
+        children_by_parent: dict[str | None, list[Concept]],
     ) -> None:
         connector = "└── " if is_last else "├── "
         label = concept.name
         if concept.description:
             label += f" - {concept.description}"
         lines.append(f"{prefix}{connector}{label}")
-        children = sorted(
-            [c for c in self.concepts.values() if c.parent == concept.name],
-            key=lambda c: c.name,
-        )
+        children = children_by_parent.get(concept.name, [])
         child_prefix = prefix + ("    " if is_last else "│   ")
         for j, child in enumerate(children):
-            self._print_subtree(child, lines, child_prefix, j == len(children) - 1)
+            self._print_subtree(
+                child,
+                lines,
+                child_prefix,
+                j == len(children) - 1,
+                children_by_parent,
+            )
 
     # -- Serialization helpers --
 
-    def to_dict(self) -> dict:
-        data: dict = {
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
             "ontology": {"name": self.name},
         }
         if self.description:
@@ -198,7 +223,7 @@ class Ontology:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> Ontology:
+    def from_dict(cls, data: dict[str, Any]) -> Ontology:
         meta = data.get("ontology", {})
         onto = cls(name=meta.get("name", "Untitled"), description=meta.get("description", ""))
 

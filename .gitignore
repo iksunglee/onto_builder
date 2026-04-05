@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Testing / linting caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Claude Code (local settings)
+.claude/
+
+# Sisyphus (internal task tracking)
+.sisyphus/
+
+# Generated ontology outputs (keep examples)
+ontology.onto.yaml
+ontology.ttl
+ontology.owl
+ontology.jsonld
+ontology.schema-card.json
+ontology.prompt.txt
+tutorial.html
+pet_store.onto.yaml

@@ -27,7 +27,7 @@ def add_relation(
         typer.echo(f"Error: {e}")
         raise typer.Exit(1)
     save_current_ontology(onto, path)
-    typer.echo(f"Added relation '{name}': {source} → {target}")
+    typer.echo(f"Added relation '{name}': {source} -> {target}")
 
 
 @relation_app.command("list")

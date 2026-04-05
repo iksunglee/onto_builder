@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-    from tests.conftest import pet_store_ontology, empty_ontology; o = pet_store_ontology(); e = empty_ontology(); print(f'pet_store: concepts={len(o.concepts)}, relations={len(o.relations)}, instances={len(o.instances)}'); print(f'empty: concepts={len(e.concepts)}, relations={len(e.relations)}, instances={len(e.instances)}')
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ModuleNotFoundError: No module named 'tests.conftest'
