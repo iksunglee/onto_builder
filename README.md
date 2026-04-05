@@ -1,50 +1,67 @@
 # OntoBuilder
 
-**Build, explore, and export ontologies from data — no PhD required.**
+Build small, understandable ontologies from scratch or from data, then inspect, refine, and export them without needing to know OWL up front.
 
-OntoBuilder is a Python toolkit that turns raw data (CSV, JSON) into formal ontologies with concepts, relations, properties, and OWL/RDF exports. It comes with a CLI, a web UI, LLM-powered assistance, and a beginner-friendly glossary.
+OntoBuilder is a Python toolkit for creating ontologies with concepts, properties, relations, and instances. It ships with a CLI, a Python API, OWL/RDF export, lightweight reasoning, data-to-ontology helpers, optional AI-assisted workflows, and a Streamlit app for visual editing.
 
----
+## What To Expect
 
-## Features
+- Good fit for: learning ontology modeling, prototyping domain models, turning CSV/JSON structure into a first ontology draft, exporting to OWL/Turtle/JSON-LD, and iterating from the terminal or Python.
+- Core workflows work locally: create an ontology, edit it, save it as `.onto.yaml`, inspect it, export it, and run basic reasoning checks.
+- AI features are optional: interview mode, inference from sample data, and the live workspace need LLM dependencies and provider setup.
+- The project is still early-stage: useful already, but expect some rough edges around advanced flows and docs.
 
-- **Data → Ontology pipeline** — analyze CSV/JSON files, get concept and relation suggestions, build ontologies automatically or interactively
-- **Rich CLI** — manage concepts, properties, relations, instances, and exports from the terminal
-- **OWL/RDF export** — Turtle and RDF-XML via rdflib, with built-in reasoning and consistency checks
-- **RAG-friendly exports** — JSON-LD, Schema Card, and system prompt text formats
-- **LLM integration** — AI-powered interview mode, natural language chat, and structure inference
-- **Domain templates** — pre-built starters for healthcare, e-commerce, and more
-- **Web UI** — visual ontology builder with Streamlit
-- **Graph backends** — NetworkX (built-in) and Neo4j
-- **Educational glossary** — learn ontology terms as you build
+## Main Ways To Use It
 
----
+### 1. CLI
+
+The installed command is `onto`.
+
+If you prefer, you can also run the module form:
+
+```bash
+python -m ontobuilder
+```
+
+Use the CLI when you want to:
+
+- create and save an ontology project
+- add concepts, relations, and properties from the terminal
+- export to YAML, JSON, prompt text, JSON-LD, Schema Card, OWL, or Turtle
+- run reasoning and structured queries
+- build from data or use the AI-assisted workspace
+
+### 2. Python API
+
+Use the Python API when you want to script ontology creation directly inside your application or notebook.
+
+### 3. Streamlit App
+
+Use the web UI when you want a more visual editing flow with graph views and guided next steps.
 
 ## Installation
 
 ```bash
-# Core (CLI + OWL export + reasoning)
+# Core package
 pip install ontobuilder
 
-# With AI features
+# AI-assisted features
 pip install ontobuilder[llm]
 
-# With web UI
+# Streamlit app
 pip install ontobuilder[web]
 
 # Everything
 pip install ontobuilder[all]
 ```
 
-For development:
+For local development:
 
 ```bash
 git clone https://github.com/iksun/ontobuilder.git
 cd ontobuilder
 pip install -e ".[dev,llm,web]"
 ```
-
----
 
 ## Quick Start
 
@@ -53,71 +70,74 @@ pip install -e ".[dev,llm,web]"
 ```python
 from ontobuilder import Ontology
 
-onto = Ontology("Pet Store", description="A pet store domain model")
+onto = Ontology("Pet Store", description="A simple pet store ontology")
 
-# Add concepts with hierarchy
 onto.add_concept("Animal", description="A living creature")
 onto.add_concept("Dog", parent="Animal", description="A domestic dog")
-onto.add_concept("Cat", parent="Animal", description="A domestic cat")
 onto.add_concept("Customer", description="A person who buys pets")
 
-# Add properties
 onto.add_property("Animal", "name", data_type="string", required=True)
-onto.add_property("Animal", "age", data_type="int")
 onto.add_property("Dog", "breed", data_type="string")
 
-# Add relations
 onto.add_relation("buys", source="Customer", target="Animal")
 
-# Add instances
 onto.add_instance("Rex", concept="Dog", properties={"name": "Rex", "breed": "Labrador"})
 
 print(onto.print_tree())
 ```
 
-### CLI
+### CLI Basics
 
 ```bash
-# Create a new ontology
+# The CLI command is `onto`
 onto init "Hospital Booking"
-
-# Add concepts
 onto concept add Patient --description "A person receiving care"
-onto concept add Surgeon --parent Provider
+onto concept add Surgeon
 onto concept add SurgeryBooking
-
-# Add relations
 onto relation add assigned_surgeon --source SurgeryBooking --target Surgeon
-
-# View the ontology
 onto info
-
-# Export to OWL
 onto owl export --format turtle
-
-# Run consistency checks
 onto owl reason
-
-# Query the ontology
 onto owl query describe SurgeryBooking
-onto owl query path SurgeryBooking --target Hospital
 ```
 
-### Build from Data
+### Build From Data
 
 ```bash
-# Analyze a data file
 onto tool analyze data.csv
-
-# Get ontology suggestions
 onto tool suggest data.csv
-
-# Auto-build ontology from data
 onto tool build data.csv
-
-# Interactive mode — review each suggestion step by step
 onto tool build -i data.csv
 ```
+
+What this flow gives you:
+
+- `analyze` shows the structure OntoBuilder sees in the file
+- `suggest` proposes concepts and relations
+- `build` creates an ontology draft
+- `build -i` lets you review suggestions step by step
+
+### AI-Assisted Workflows
+
+First configure an LLM provider:
+
+```bash
+onto configure
+```
+
+Then you can use:
+
+```bash
+onto interview
+onto infer data.csv
+onto workspace data.csv
+```
+
+Use these when you want:
+
+- `interview` - guided ontology design through questions
+- `infer` - a quick AI-generated ontology draft from data
+- `workspace` - data -> ontology draft -> chat refinement -> OWL export
 
 ### Web UI
 
@@ -126,74 +146,72 @@ pip install ontobuilder[web]
 streamlit run streamlit_app.py
 ```
 
----
+The app includes concept editing, graph visualization, CSV-assisted ontology building, next-step suggestions, and chat-based exploration.
 
-## CLI Commands
+## CLI Command Map
 
-| Command | Description |
-|---------|-------------|
-| `onto init` | Create a new ontology project |
-| `onto info` | Show ontology summary |
+| Command | What it does |
+|---------|---------------|
+| `onto init` | Create a new ontology file in the current directory |
+| `onto info` | Show summary information about the current ontology |
 | `onto concept add/list/remove` | Manage concepts |
 | `onto relation add/list/remove` | Manage relations |
-| `onto save / load` | Save or load `.onto.yaml` files |
-| `onto export` | Export to various formats |
-| `onto owl export` | Export as OWL/RDF (Turtle or RDF-XML) |
-| `onto owl reason` | Run OWL inference and consistency checks |
-| `onto owl query` | Structured queries (classes, relations, describe, path) |
-| `onto tool analyze` | Analyze a data file |
-| `onto tool suggest` | Show ontology suggestions from data |
-| `onto tool build` | Build ontology from data (auto or interactive) |
-| `onto interview` | AI-powered interview to build an ontology |
-| `onto chat` | Chat with your ontology in natural language |
-| `onto workspace` | Full workspace: analyze, build, chat, export |
-| `onto learn` | Learn ontology terms |
-| `onto suggest` | Get next-step suggestions |
-| `onto domains list/apply` | Browse and apply domain templates |
-| `onto configure` | Set up LLM API keys and models |
+| `onto save` / `onto load` | Save or load `.onto.yaml` files |
+| `onto export` | Export to `yaml`, `json`, `prompt`, `jsonld`, `schema-card`, `owl`, or `turtle` |
+| `onto owl export` | Export OWL as RDF/XML or Turtle |
+| `onto owl reason` | Run inference and consistency checks |
+| `onto owl query` | Query classes, instances, relations, descriptions, validation, or paths |
+| `onto tool analyze` | Inspect a data file |
+| `onto tool suggest` | Generate ontology suggestions from data |
+| `onto tool build` | Build an ontology from data |
+| `onto suggest` | Suggest likely next steps for the current ontology |
+| `onto learn` | Show glossary-style explanations of ontology terms |
+| `onto domains list/apply` | List and apply built-in domain templates |
+| `onto configure` | Configure an LLM provider |
+| `onto interview` | Build an ontology through an AI-assisted interview |
+| `onto infer` | Infer an ontology draft from a data file |
+| `onto chat` | Ask questions about the current ontology |
+| `onto workspace` | Open a live AI-assisted ontology workspace |
 
----
+## Files You Will See
 
-## Architecture
+- `ontology.onto.yaml` - the default working ontology file used by the CLI
+- `ontology.ttl` / `ontology.owl` - common export outputs
+- your source CSV/JSON files - optional inputs for data-assisted modeling
 
-```
+## Architecture At A Glance
+
+```text
 src/ontobuilder/
-├── core/           # Data model — Concept, Property, Relation, Instance, Ontology
-├── cli/            # Typer CLI with Rich formatting
-├── serialization/  # YAML, JSON, JSON-LD, Schema Card, Prompt exporters
-├── owl/            # OWL/RDF export, reasoning, structured queries (rdflib)
-├── llm/            # LLM integration (LiteLLM, OpenAI, Instructor)
-├── chat/           # Natural language chat and workspace
-├── tool/           # Data analysis → ontology building pipeline
-├── graph/          # Graph backends (NetworkX, Neo4j)
-├── domains/        # Domain templates (healthcare, e-commerce)
-└── education/      # Ontology glossary for beginners
+|- core/           # Ontology model, concepts, properties, relations, validation
+|- cli/            # Typer-based CLI
+|- serialization/  # YAML, JSON, JSON-LD, Schema Card, prompt export
+|- owl/            # OWL/Turtle export, reasoning, structured query support
+|- llm/            # Optional LLM-backed inference and interview flows
+|- chat/           # Ontology chat and workspace flows
+|- tool/           # Data analysis and ontology suggestion pipeline
+|- graph/          # NetworkX and optional Neo4j utilities
+|- domains/        # Built-in domain templates
+`- education/      # Beginner glossary and learning helpers
 ```
-
----
 
 ## Examples
 
-See the [`examples/`](examples/) directory:
+See the `examples/` directory for starter files and datasets.
 
-| File | Description |
-|------|-------------|
-| `quickstart.py` | Build a Pet Store ontology with the Python API |
-| `hospital_surgery_booking.onto.yaml` | Hospital surgery booking ontology |
-| `hospital_surgery_bookings.csv` | Sample hospital surgery data |
-| `real_ecommerce_orders.csv` | E-commerce orders dataset |
-| `bookstore.csv` | Bookstore dataset |
-| `concept_university.csv` | University concepts dataset |
+Useful starting points:
+
+- `examples/quickstart.py` - basic Python API walkthrough
+- `examples/hospital_surgery_booking.onto.yaml` - example ontology file
+- `examples/hospital_surgery_bookings.csv` - sample input dataset
+- `examples/real_ecommerce_orders.csv` - e-commerce-style dataset
+
+Example commands:
 
 ```bash
-# Run the quickstart
 python examples/quickstart.py
-
-# Build from hospital data
 onto tool build -i examples/hospital_surgery_bookings.csv
 ```
-
----
 
 ## Running Tests
 
@@ -201,8 +219,6 @@ onto tool build -i examples/hospital_surgery_bookings.csv
 pip install -e ".[dev]"
 pytest
 ```
-
----
 
 ## License
 

@@ -233,6 +233,56 @@ def onto_export(format: str = "yaml") -> str:
 
 
 @mcp.tool()
+def onto_infer(file_path: str, local: bool = True) -> str:
+    """Infer ontology from a data file (CSV or JSON).
+
+    Set local=True for fast offline analysis (no LLM needed).
+    Set local=False to use AI for richer semantic inference (requires LLM config).
+    """
+    from ontobuilder.tool.analyzer import DataAnalyzer
+    from ontobuilder.tool.suggestions import SuggestionEngine
+
+    try:
+        analyzer = DataAnalyzer()
+        profile = analyzer.analyze(file_path)
+    except (FileNotFoundError, ValueError) as e:
+        return f"Error: {e}"
+
+    if local:
+        engine = SuggestionEngine()
+        suggestions = engine.suggest(profile)
+        onto_name = profile.suggested_concept_name + "Ontology"
+        onto = engine.build_ontology(suggestions, onto_name)
+        _save(onto)
+
+        parts = [
+            f"Built ontology '{onto.name}' from {profile.file_path}",
+            f"  {profile.row_count} rows, {len(profile.columns)} columns",
+            f"  {len(onto.concepts)} concepts, {len(onto.relations)} relations",
+            "",
+            onto.print_tree(),
+        ]
+        if suggestions.notes:
+            parts.append("\nNotes:")
+            for note in suggestions.notes:
+                parts.append(f"  {note}")
+        return "\n".join(parts)
+    else:
+        from ontobuilder.llm.client import chat
+        from ontobuilder.llm.schemas import OntologySuggestion
+        from ontobuilder.llm.prompts import infer_prompt
+        from ontobuilder.llm.inference import read_sample_data, build_ontology_from_suggestion
+
+        sample = read_sample_data(file_path)
+        suggestion: OntologySuggestion = chat(
+            infer_prompt(sample), response_model=OntologySuggestion
+        )
+        onto = build_ontology_from_suggestion(suggestion)
+        _save(onto)
+        return f"Built ontology '{onto.name}' with AI\n\n{onto.print_tree()}"
+
+
+@mcp.tool()
 def onto_reason() -> str:
     """Run OWL inference and consistency checks on the ontology."""
     onto = _load()

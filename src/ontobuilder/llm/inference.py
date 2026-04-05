@@ -1,16 +1,17 @@
-"""Infer ontology structure from sample data using LLM."""
+"""Infer ontology structure from data — via LLM or local heuristics."""
 
 from __future__ import annotations
 
 import csv
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ontobuilder.core.ontology import Ontology
 from ontobuilder.core.validation import VALID_DATA_TYPES
-from ontobuilder.llm.client import chat
-from ontobuilder.llm.schemas import OntologySuggestion
-from ontobuilder.llm.prompts import infer_prompt
+
+if TYPE_CHECKING:
+    from ontobuilder.llm.schemas import OntologySuggestion
 
 
 def read_sample_data(file_path: str | Path, max_rows: int = 20) -> str:
@@ -111,24 +112,104 @@ def build_ontology_from_suggestion(suggestion: OntologySuggestion) -> Ontology:
     return onto
 
 
-def infer_ontology(file_path: str | Path) -> Ontology | None:
+def infer_ontology(file_path: str | Path, *, local: bool = False) -> Ontology | None:
     """Infer an ontology from a data file.
+
+    Args:
+        file_path: Path to CSV, JSON, or text file.
+        local: If True, use local heuristic analysis (no LLM needed).
+               If False, use LLM for richer inference.
 
     Returns the built Ontology, or None if cancelled.
     """
-    from rich import print as rprint
-    from rich.prompt import Confirm
-
     path = Path(file_path)
     if not path.exists():
+        from rich import print as rprint
+
         rprint(f"[red]File not found: {path}[/red]")
         return None
 
-    rprint(f"\n[bold]Analyzing data from: {path.name}[/bold]\n")
+    if local:
+        return _infer_local(path)
+    return _infer_llm(path)
+
+
+def _infer_local(path: Path) -> Ontology | None:
+    """Infer ontology using local heuristic analysis — no LLM required."""
+    from rich import print as rprint
+    from rich.prompt import Confirm
+    from rich.panel import Panel
+
+    from ontobuilder.tool.analyzer import DataAnalyzer
+    from ontobuilder.tool.suggestions import SuggestionEngine
+
+    rprint(f"\n[bold]Analyzing data locally: {path.name}[/bold]\n")
+
+    analyzer = DataAnalyzer()
+    try:
+        profile = analyzer.analyze(str(path))
+    except (FileNotFoundError, ValueError) as e:
+        rprint(f"[red]Error: {e}[/red]")
+        return None
+
+    engine = SuggestionEngine()
+    suggestions = engine.suggest(profile)
+
+    # Show what we found
+    rprint(Panel(
+        f"[bold]{profile.row_count}[/bold] rows, "
+        f"[bold]{len(profile.columns)}[/bold] columns\n"
+        f"Suggested main concept: [bold]{profile.suggested_concept_name}[/bold]",
+        title=f"Data Profile: {path.name}",
+        border_style="blue",
+    ))
+
+    rprint("[bold]Concepts:[/bold]")
+    for cs in suggestions.concepts:
+        source_label = {
+            "main": "data file", "foreign_key": "foreign key",
+            "categorical": "category", "nested": "nested object",
+        }.get(cs.source, cs.source)
+        props = ", ".join(f"{p.name}:{p.data_type}" for p in cs.properties)
+        rprint(f"  - [bold]{cs.name}[/bold] [dim]({source_label})[/dim]"
+               + (f"  [{props}]" if props else ""))
+
+    if suggestions.relations:
+        rprint("\n[bold]Relations:[/bold]")
+        for rs in suggestions.relations:
+            rprint(f"  - {rs.name}: {rs.source} → {rs.target}  ({rs.cardinality})")
+
+    if suggestions.notes:
+        rprint("\n[bold]Notes:[/bold]")
+        for note in suggestions.notes:
+            rprint(f"  [dim]{note}[/dim]")
+
+    if not Confirm.ask("\nApply this ontology structure?", default=True):
+        rprint("Cancelled.")
+        return None
+
+    onto_name = profile.suggested_concept_name + "Ontology"
+    onto = engine.build_ontology(suggestions, onto_name)
+
+    rprint("\n[bold green]Ontology built from data![/bold green]\n")
+    rprint(onto.print_tree())
+
+    return onto
+
+
+def _infer_llm(path: Path) -> Ontology | None:
+    """Infer ontology using LLM for richer semantic analysis."""
+    from rich import print as rprint
+    from rich.prompt import Confirm
+
+    from ontobuilder.llm.client import chat
+    from ontobuilder.llm.schemas import OntologySuggestion
+    from ontobuilder.llm.prompts import infer_prompt
+
+    rprint(f"\n[bold]Analyzing data with AI: {path.name}[/bold]\n")
 
     sample = read_sample_data(path)
     rprint("[dim]Sample data:[/dim]")
-    # Show first few lines
     for line in sample.split("\n")[:10]:
         rprint(f"  {line}")
     if sample.count("\n") > 10:
@@ -141,7 +222,6 @@ def infer_ontology(file_path: str | Path) -> Ontology | None:
         response_model=OntologySuggestion,
     )
 
-    # Show the suggestion
     rprint(f"[bold]Suggested ontology: {suggestion.name}[/bold]")
     if suggestion.description:
         rprint(f"  {suggestion.description}\n")

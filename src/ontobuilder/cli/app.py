@@ -613,9 +613,17 @@ def interview(
 @app.command()
 def infer(
     file: str = typer.Argument(..., help="Path to data file (CSV, JSON, or text)"),
+    local: bool = typer.Option(
+        False, "--local", "-l",
+        help="Use local heuristic analysis (no LLM or API key needed)",
+    ),
 ):
-    """Infer an ontology structure from a data file using AI."""
-    if not _ensure_llm_configured():
+    """Infer an ontology structure from a data file.
+
+    By default uses AI for rich semantic inference.
+    Use --local for fast, offline analysis with no API key required.
+    """
+    if not local and not _ensure_llm_configured():
         raise typer.Exit(1)
 
     from ontobuilder.llm.inference import infer_ontology
@@ -623,7 +631,7 @@ def infer(
     from ontobuilder.cli.helpers import DEFAULT_FILE
     from pathlib import Path
 
-    onto = infer_ontology(file)
+    onto = infer_ontology(file, local=local)
     if onto is None:
         return
     path = Path(DEFAULT_FILE)
