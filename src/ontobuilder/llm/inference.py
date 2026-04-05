@@ -273,12 +273,44 @@ def _infer_llm(path: Path) -> Ontology | None:
     suggestion.relations = confirmed_relations
     onto = build_ontology_from_suggestion(suggestion)
 
-    # Step 3: Edit loop
+    # Step 3: Populate with data instances
     rprint("\n[bold green]Ontology built![/bold green]\n")
     rprint(onto.print_tree())
+    _populate_from_data(onto, path)
+
+    # Step 4: Edit loop
     onto = _edit_loop(onto)
 
     return onto
+
+
+def _populate_from_data(onto: Ontology, path: Path) -> None:
+    """Offer to populate the ontology with instances from the data file."""
+    from rich import print as rprint
+    from rich.prompt import Confirm
+
+    if path.suffix.lower() not in (".csv", ".json"):
+        return
+
+    if not Confirm.ask("\n  Populate ontology with instances from the data?", default=True):
+        return
+
+    from ontobuilder.tool.populate import populate_ontology
+
+    result = populate_ontology(onto, path)
+    rprint(f"\n  [green]Added {result['instances']} instances[/green]")
+    if result["skipped"]:
+        rprint(f"  [dim]Skipped {result['skipped']} (duplicates or errors)[/dim]")
+
+    # Show summary
+    concept_counts: dict[str, int] = {}
+    for inst in onto.instances.values():
+        concept_counts[inst.concept] = concept_counts.get(inst.concept, 0) + 1
+    if concept_counts:
+        rprint("\n  [bold]Instances per concept:[/bold]")
+        for cname, count in sorted(concept_counts.items()):
+            rprint(f"    {cname}: {count}")
+    rprint()
 
 
 def _edit_loop(onto: Ontology) -> Ontology:

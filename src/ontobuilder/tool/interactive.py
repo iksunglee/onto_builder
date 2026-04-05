@@ -66,10 +66,13 @@ class InteractiveBuilder:
         # Step 6: Build ontology
         onto = self._build(profile, accepted_concepts, accepted_relations)
 
-        # Step 7: Edit loop
+        # Step 7: Populate with data instances
+        self._populate(onto, file_path, profile)
+
+        # Step 8: Edit loop
         onto = self._edit_loop(onto)
 
-        # Step 8: Show final result and export
+        # Step 9: Show final result and export
         self._show_final(onto)
 
         return onto
@@ -285,10 +288,41 @@ class InteractiveBuilder:
 
         return onto
 
-    # ---- Step 7: Edit loop ----
+    # ---- Step 7: Populate ----
+
+    def _populate(self, onto: Ontology, file_path: str, profile: DataProfile) -> None:
+        """Offer to populate the ontology with instances from the data."""
+        if not Confirm.ask(
+            "\n  Populate ontology with instances from the data?", default=True
+        ):
+            return
+
+        from ontobuilder.tool.populate import populate_ontology
+
+        with self.console.status("[bold blue]Reading data and creating instances...[/bold blue]"):
+            result = populate_ontology(onto, file_path)
+
+        self.console.print(
+            f"\n  [green]Added {result['instances']} instances[/green]"
+        )
+        if result["skipped"]:
+            self.console.print(
+                f"  [dim]Skipped {result['skipped']} (duplicates or errors)[/dim]"
+            )
+
+        # Show a summary of instances per concept
+        concept_counts: dict[str, int] = {}
+        for inst in onto.instances.values():
+            concept_counts[inst.concept] = concept_counts.get(inst.concept, 0) + 1
+        if concept_counts:
+            self.console.print("\n  [bold]Instances per concept:[/bold]")
+            for cname, count in sorted(concept_counts.items()):
+                self.console.print(f"    {cname}: {count}")
+
+    # ---- Step 8: Edit loop ----
 
     def _edit_loop(self, onto: Ontology) -> Ontology:
-        self.console.print(Panel("[bold]Step 4: Review & Edit[/bold]", border_style="blue"))
+        self.console.print(Panel("[bold]Step 5: Review & Edit[/bold]", border_style="blue"))
         self.console.print(f"\n{onto.print_tree()}")
 
         self.console.print(
