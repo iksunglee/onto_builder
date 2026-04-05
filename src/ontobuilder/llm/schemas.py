@@ -36,6 +36,18 @@ class OntologySuggestion(BaseModel):
     relations: list[RelationSuggestion] = Field(default_factory=list)
 
 
+class SubcategorySuggestion(BaseModel):
+    """A specific sub-category derived from actual data values."""
+    name: str = Field(description="Sub-category name (from data values)")
+    description: str = Field(default="", description="Brief description")
+    parent: str = Field(description="Parent concept this belongs to")
+
+
+class SubcategorySuggestions(BaseModel):
+    """Sub-categories inferred from data values for confirmed concepts."""
+    subcategories: list[SubcategorySuggestion] = Field(default_factory=list)
+
+
 class InterviewQuestion(BaseModel):
     """A question the LLM wants to ask during the interview."""
     question: str = Field(description="The question to ask the user")

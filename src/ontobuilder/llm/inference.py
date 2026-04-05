@@ -69,6 +69,62 @@ def _read_text(path: Path, max_rows: int) -> str:
     return "\n".join(lines)
 
 
+def _build_analysis_context(file_path: str | Path) -> str:
+    """Build supplementary analysis context from the full dataset.
+
+    Returns key signals (column roles, entity candidates, cleaning suggestions)
+    that help the LLM understand the full dataset beyond the sample rows.
+    Returns empty string if analysis is unavailable.
+    """
+    path = Path(file_path)
+
+    try:
+        from ontobuilder.tool.analyzer import DataAnalyzer
+        from ontobuilder.tool.suggestions import SuggestionEngine
+
+        analyzer = DataAnalyzer()
+        profile = analyzer.analyze(str(path))
+        suggestions = SuggestionEngine().suggest(profile)
+        lines = [
+            f"Total rows: {profile.row_count}, Columns: {len(profile.columns)}",
+        ]
+
+        # Only include columns with notable roles (FK, ID, categorical)
+        notable = []
+        for col in profile.columns:
+            parts = []
+            if col.is_id_like:
+                parts.append("likely primary ID")
+            if col.is_foreign_key:
+                ref = col.referenced_entity or "unknown"
+                parts.append(f"likely foreign key → {ref}")
+            if col.is_categorical:
+                cats = ", ".join(col.categories[:8]) if col.categories else ""
+                parts.append(f"categorical ({col.unique_count} values: {cats})")
+            if parts:
+                notable.append(f"- {col.name}: {'; '.join(parts)}")
+        if notable:
+            lines.append("Column roles detected:")
+            lines.extend(notable)
+
+        if suggestions.relations:
+            lines.append("Suggested relationships:")
+            for rel in suggestions.relations:
+                lines.append(
+                    f"- {rel.source} --[{rel.name}]--> {rel.target} ({rel.cardinality})"
+                )
+
+        if profile.cleaning_suggestions:
+            lines.append("Data signals:")
+            for item in profile.cleaning_suggestions:
+                example = f" (e.g. {item.sample})" if item.sample else ""
+                lines.append(f"- {item.column}: {item.description}{example}")
+
+        return "\n".join(lines)
+    except (ValueError, FileNotFoundError):
+        return ""
+
+
 def _normalize_data_type(data_type: str) -> str:
     return data_type if data_type in VALID_DATA_TYPES else "string"
 
@@ -154,6 +210,7 @@ def _show_data_overview(path: Path) -> None:
 
     try:
         from ontobuilder.tool.analyzer import DataAnalyzer
+
         analyzer = DataAnalyzer()
         profile = analyzer.analyze(str(path))
     except (ValueError, FileNotFoundError):
@@ -189,12 +246,12 @@ def _show_data_overview(path: Path) -> None:
         )
 
     rprint(table)
-    rprint(
-        f"  [dim]{profile.row_count} rows, {len(profile.columns)} columns[/dim]\n"
-    )
+    rprint(f"  [dim]{profile.row_count} rows, {len(profile.columns)} columns[/dim]\n")
 
     if profile.cleaning_suggestions:
-        rprint(Panel("[bold yellow]Data Cleaning Suggestions[/bold yellow]", border_style="yellow"))
+        rprint(
+            Panel("[bold yellow]Data Cleaning Suggestions[/bold yellow]", border_style="yellow")
+        )
         for cs in profile.cleaning_suggestions:
             rprint(f"  [yellow]![/yellow] [bold]{cs.column}[/bold]: {cs.description}")
             rprint(f"    → {cs.suggestion}")
@@ -217,12 +274,15 @@ def _infer_llm(path: Path) -> Ontology | None:
     # Show detailed data breakdown first
     _show_data_overview(path)
 
+    # Send raw sample data so the LLM sees actual values
     sample = read_sample_data(path)
+    # Build supplementary analysis context from the full dataset
+    analysis_context = _build_analysis_context(path)
 
     rprint("[bold]Sending to AI for ontology inference...[/bold]\n")
 
     suggestion: OntologySuggestion = chat(
-        infer_prompt(sample),
+        infer_prompt(sample, analysis_context=analysis_context),
         response_model=OntologySuggestion,
     )
 
@@ -251,11 +311,28 @@ def _infer_llm(path: Path) -> Ontology | None:
         rprint("[yellow]No concepts accepted. Aborting.[/yellow]")
         return None
 
-    # Step 2: Review relations
-    confirmed_names = {c.name for c in confirmed_concepts}
+    # Step 2: Suggest sub-categories based on confirmed concepts + data
+    confirmed_names = [c.name for c in confirmed_concepts]
+    subcategory_concepts = _suggest_subcategories(
+        confirmed_names, sample, analysis_context
+    )
+    if subcategory_concepts:
+        rprint("\n[bold]Review sub-categories (from data values):[/bold]")
+        for sc in subcategory_concepts:
+            rprint(f"\n  [bold]{sc.name}[/bold] (child of {sc.parent})")
+            if sc.description:
+                rprint(f"  {sc.description}")
+            if Confirm.ask("  Include?", default=True):
+                new_name = Prompt.ask("  Name", default=sc.name)
+                sc.name = new_name
+                confirmed_concepts.append(sc)
+
+    # Step 3: Review relations
+    confirmed_names_set = {c.name for c in confirmed_concepts}
     valid_relations = [
-        r for r in suggestion.relations
-        if r.source in confirmed_names and r.target in confirmed_names
+        r
+        for r in suggestion.relations
+        if r.source in confirmed_names_set and r.target in confirmed_names_set
     ]
 
     confirmed_relations = []
@@ -273,15 +350,58 @@ def _infer_llm(path: Path) -> Ontology | None:
     suggestion.relations = confirmed_relations
     onto = build_ontology_from_suggestion(suggestion)
 
-    # Step 3: Populate with data instances
+    # Step 4: Populate with data instances
     rprint("\n[bold green]Ontology built![/bold green]\n")
     rprint(onto.print_tree())
     _populate_from_data(onto, path)
 
-    # Step 4: Edit loop
+    # Step 5: Edit loop
     onto = _edit_loop(onto)
 
     return onto
+
+
+def _suggest_subcategories(
+    confirmed_concepts: list[str],
+    data_sample: str,
+    analysis_context: str,
+) -> list:
+    """Ask the LLM to suggest specific sub-categories based on confirmed concepts + data."""
+    from rich import print as rprint
+
+    from ontobuilder.llm.client import chat
+    from ontobuilder.llm.prompts import infer_subcategories_prompt
+    from ontobuilder.llm.schemas import ConceptSuggestion, SubcategorySuggestions
+
+    rprint("\n[bold]Looking for specific categories in the data...[/bold]\n")
+
+    result: SubcategorySuggestions = chat(
+        infer_subcategories_prompt(
+            confirmed_concepts, data_sample, analysis_context=analysis_context
+        ),
+        response_model=SubcategorySuggestions,
+    )
+
+    if not result.subcategories:
+        rprint("[dim]No sub-categories found in the data.[/dim]")
+        return []
+
+    # Filter out any that reference a parent not in confirmed concepts
+    valid_parent_set = set(confirmed_concepts)
+    valid = []
+    for sc in result.subcategories:
+        if sc.parent not in valid_parent_set:
+            continue
+        valid.append(
+            ConceptSuggestion(
+                name=sc.name,
+                description=sc.description,
+                parent=sc.parent,
+                properties=[],
+            )
+        )
+
+    return valid
 
 
 def _populate_from_data(onto: Ontology, path: Path) -> None:
@@ -340,7 +460,8 @@ def _edit_loop(onto: Ontology) -> Ontology:
             parent = Prompt.ask("  Parent", choices=parent_choices, default="(none)")
             try:
                 onto.add_concept(
-                    name, description=desc,
+                    name,
+                    description=desc,
                     parent=parent if parent != "(none)" else None,
                 )
                 rprint(f"  [green]Added: {name}[/green]")

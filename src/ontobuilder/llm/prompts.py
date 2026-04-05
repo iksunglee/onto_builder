@@ -63,21 +63,56 @@ IMPORTANT: Do NOT re-suggest concepts or relations that already exist. Only sugg
 Make sure any parent references point to concepts that either already exist or are in your suggestions."""
 
 INFER_FROM_DATA = """\
-Analyze this sample data and infer an ontology structure.
+Analyze this data and infer an ontology structure.
 
 Data sample:
 {data_sample}
 
-Based on the columns, values, and patterns in this data:
-1. Identify the main concepts (entities/classes)
-2. Determine properties for each concept (from column names and value types)
-3. Suggest relationships between concepts
+{analysis_context}
+
+Based on the actual data values and patterns:
+1. Identify the main concepts (entities/classes) — look at what each row represents
+2. Determine properties for each concept from column names, value types, and actual values
+3. Find relationships between concepts — especially:
+   - Comma-separated or delimited values in a cell → separate entity with many-to-many relation
+   - Columns that reference other entities (company names, category names, IDs) → separate concept with relation
+   - Nested or repeated structures → child concepts
 4. Organize concepts in a hierarchy if appropriate
 
-Be practical — focus on what the data actually represents."""
+Be practical — focus on what the data actually represents, not just literal column names.
+When a column contains lists of items (e.g. ingredients, tags, roles), model those items as a separate concept linked by a relation, not as a flat string property."""
+
+INFER_SUBCATEGORIES = """\
+The user has confirmed these top-level concepts for their ontology:
+
+{confirmed_concepts}
+
+Here is the data:
+{data_sample}
+
+{analysis_context}
+
+Based on the ACTUAL VALUES in the data, suggest specific sub-categories (child concepts) \
+for each confirmed concept where it makes sense. For example:
+- If there's a "Category" concept and the data has values like "Electronics", "Sports", "Home" \
+→ suggest those as child concepts of Category
+- If there's a "PaymentMethod" concept with values "Credit Card", "PayPal", "Bank Transfer" \
+→ suggest those as child concepts of PaymentMethod
+- If there's a "CustomerTier" concept with values "Gold", "Silver", "Bronze" \
+→ suggest those as child concepts of CustomerTier
+
+Rules:
+- Only suggest sub-categories clearly present in the data values
+- Each sub-category MUST have its parent set to one of the confirmed concepts
+- Do NOT re-suggest the confirmed concepts themselves
+- Focus on categorical/enum-like values, not unique values like names or IDs
+- Keep descriptions brief — one line explaining what the category represents
+- Do NOT add properties to sub-categories (they inherit from the parent)"""
 
 
-def interview_scoping_prompt(domain_hints: dict | None = None) -> list[dict[str, str]]:
+def interview_scoping_prompt(
+    domain_hints: dict[str, object] | None = None,
+) -> list[dict[str, str]]:
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     content = INTERVIEW_SCOPING
     if domain_hints:
@@ -99,9 +134,7 @@ def interview_relations_prompt(context: str, concepts: list[str]) -> list[dict[s
         {"role": "system", "content": SYSTEM_PROMPT},
         {
             "role": "user",
-            "content": INTERVIEW_RELATIONS.format(
-                context=context, concepts=concept_list
-            ),
+            "content": INTERVIEW_RELATIONS.format(context=context, concepts=concept_list),
         },
     ]
 
@@ -130,8 +163,41 @@ def enhance_existing_prompt(
     ]
 
 
-def infer_prompt(data_sample: str) -> list[dict[str, str]]:
+def infer_subcategories_prompt(
+    confirmed_concepts: list[str],
+    data_sample: str,
+    analysis_context: str = "",
+) -> list[dict[str, str]]:
+    """Build prompt for suggesting sub-categories based on confirmed concepts + data."""
+    concept_list = "\n".join(f"- {c}" for c in confirmed_concepts)
+    ctx = ""
+    if analysis_context:
+        ctx = f"Additional analysis from the full dataset:\n{analysis_context}"
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": INFER_FROM_DATA.format(data_sample=data_sample)},
+        {
+            "role": "user",
+            "content": INFER_SUBCATEGORIES.format(
+                confirmed_concepts=concept_list,
+                data_sample=data_sample,
+                analysis_context=ctx,
+            ),
+        },
+    ]
+
+
+def infer_prompt(
+    data_sample: str, analysis_context: str = ""
+) -> list[dict[str, str]]:
+    ctx = ""
+    if analysis_context:
+        ctx = f"Additional analysis from the full dataset:\n{analysis_context}"
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": INFER_FROM_DATA.format(
+                data_sample=data_sample, analysis_context=ctx
+            ),
+        },
     ]
