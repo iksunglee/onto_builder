@@ -15,7 +15,6 @@ from ontobuilder.cli.helpers import (
     DEFAULT_FILE,
     find_onto_file,
     load_current_ontology,
-    save_current_ontology,
 )
 
 # We store commands as (name, command) tuples so app.py can register them

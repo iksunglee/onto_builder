@@ -15,7 +15,6 @@ from ontobuilder.llm.prompts import (
     interview_scoping_prompt,
     interview_concepts_prompt,
     interview_relations_prompt,
-    SYSTEM_PROMPT,
 )
 
 

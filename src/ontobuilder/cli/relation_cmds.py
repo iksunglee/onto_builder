@@ -1,6 +1,5 @@
 """CLI commands for managing relations."""
 
-from typing import Optional
 
 import typer
 from rich import print as rprint

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ontobuilder.core.model import Concept, Property, Relation
+from ontobuilder.core.model import Property
 from ontobuilder.core.ontology import Ontology
-from ontobuilder.tool.analyzer import DataProfile, ColumnProfile
+from ontobuilder.tool.analyzer import DataProfile
 
 
 @dataclass

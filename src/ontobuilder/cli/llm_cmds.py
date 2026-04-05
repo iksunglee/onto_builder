@@ -6,9 +6,6 @@ import typer
 from rich import print as rprint
 
 from ontobuilder.cli.helpers import (
-    find_onto_file,
-    save_current_ontology,
-    load_current_ontology,
     DEFAULT_FILE,
 )
 from ontobuilder.serialization.yaml_io import save_yaml
