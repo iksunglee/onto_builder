@@ -58,7 +58,7 @@ TIPS: dict[str, str] = {
     ),
     "init": (
         "Tip: Your ontology is ready! Start by adding concepts that represent the key "
-        "categories in your domain. Use 'onto concept add <name>'."
+        "categories in your domain. Use 'ontobuilder concept add <name>'."
     ),
 }
 

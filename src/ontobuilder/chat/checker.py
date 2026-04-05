@@ -115,7 +115,7 @@ class OntologyChat:
                 "Add your first core concept (for example Product, Person, or Event)."
             )
             suggestions.append("Define 3-5 domain concepts before adding relations or instances.")
-            suggestions.append("Use 'onto concept add <Name>' to start building the class model.")
+            suggestions.append("Use 'ontobuilder concept add <Name>' to start building the class model.")
             return suggestions[:limit]
 
         concept_names = sorted(self.onto.concepts)
@@ -137,7 +137,7 @@ class OntologyChat:
 
         if any(c.parent is not None for c in self.onto.concepts.values()):
             suggestions.append(
-                'Review the hierarchy with `onto chat "Show the hierarchy"` to validate inheritance.'
+                'Review the hierarchy with `ontobuilder chat "Show the hierarchy"` to validate inheritance.'
             )
         elif len(self.onto.concepts) > 1:
             suggestions.append(

@@ -116,7 +116,7 @@ def tool_suggest(
             rprint(f"  {note}")
 
     rprint(f"\n  [dim]Total: {suggestions.summary}[/dim]")
-    rprint("  [dim]Run 'onto tool build <file>' to build, or 'onto tool build -i <file>' for interactive mode.[/dim]")
+    rprint("  [dim]Run 'ontobuilder tool build <file>' to build, or 'ontobuilder tool build -i <file>' for interactive mode.[/dim]")
 
 
 @tool_app.command("build")

@@ -57,7 +57,7 @@ def init_project(
     path = existing if existing and force else Path(DEFAULT_FILE)
     save_yaml(onto, path)
     typer.echo(f"Created '{path}' - ontology '{name}' is ready!")
-    typer.echo("Next: try 'onto concept add Animal --description \"A living creature\"'")
+    typer.echo("Next: try 'ontobuilder concept add Animal --description \"A living creature\"'")
 
 
 @_register("info")
