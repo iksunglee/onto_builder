@@ -21,7 +21,7 @@ When the MCP server is registered, you have direct access to these tools:
 
 ## CLI Commands
 
-Both `ontobuilder` and `onto` work as the CLI command:
+The CLI command is `ontobuilder`:
 
 ```bash
 ontobuilder init <name>           # Create ontology

@@ -15,7 +15,7 @@ OntoBuilder is a Python toolkit for creating ontologies with concepts, propertie
 
 ### 1. CLI
 
-The installed commands are `ontobuilder` and `onto` (shortcut).
+The installed command is `ontobuilder`.
 
 You can also run the module form:
 
