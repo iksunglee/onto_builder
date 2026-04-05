@@ -34,6 +34,7 @@ dependencies = [
 [project.optional-dependencies]
 openai = ["openai>=1.0", "pydantic>=2.0"]
 llm = ["litellm>=1.0", "instructor>=1.0", "pydantic>=2.0"]
+mcp = ["mcp>=1.0", "pydantic>=2.0"]
 neo4j = ["neo4j>=5.0"]
 web = ["streamlit>=1.30"]
 dev = ["pytest>=8.0", "ruff"]
@@ -42,6 +43,7 @@ all = [
     "pydantic>=2.0",
     "litellm>=1.0",
     "instructor>=1.0",
+    "mcp>=1.0",
     "neo4j>=5.0",
     "streamlit>=1.30",
 ]

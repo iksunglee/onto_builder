@@ -14,9 +14,29 @@ from pathlib import Path
 from typing import Any
 
 from ontobuilder.core.ontology import Ontology
-from ontobuilder.core.validation import ValidationError
+from ontobuilder.core.validation import VALID_DATA_TYPES, ValidationError
 from ontobuilder.owl.reasoning import OWLReasoner
 from ontobuilder.owl.export import export_turtle
+from ontobuilder.llm.schemas import (
+    AddConceptCmd,
+    AddInstanceCmd,
+    AddPropertyCmd,
+    AddRelationCmd,
+    OntologySuggestion,
+    RemoveConceptCmd,
+    RemoveRelationCmd,
+    RenameConceptCmd,
+)
+
+WorkspaceEdit = (
+    AddConceptCmd
+    | RemoveConceptCmd
+    | AddRelationCmd
+    | RemoveRelationCmd
+    | AddPropertyCmd
+    | RenameConceptCmd
+    | AddInstanceCmd
+)
 
 
 _WORKSPACE_SYSTEM = """\
@@ -117,7 +137,7 @@ class OntologyWorkspace:
         Reads the data, sends it to the LLM for inference, builds the
         base ontology, and returns a workspace ready for chat refinement.
         """
-        from ontobuilder.llm.inference import read_sample_data
+        from ontobuilder.llm.inference import build_ontology_from_suggestion, read_sample_data
         from ontobuilder.llm.client import chat
         from ontobuilder.llm.schemas import OntologySuggestion
         from ontobuilder.llm.prompts import infer_prompt
@@ -132,7 +152,7 @@ class OntologyWorkspace:
             response_model=OntologySuggestion,
         )
 
-        onto = _build_ontology_from_suggestion(suggestion)
+        onto = build_ontology_from_suggestion(suggestion)
         workspace = cls(onto)
         workspace._edit_log.append(
             {
@@ -208,7 +228,7 @@ class OntologyWorkspace:
             f"{len(self.onto.instances)} instances",
         }
 
-    def _apply_edit(self, edit) -> str:
+    def _apply_edit(self, edit: WorkspaceEdit) -> str:
         """Apply a single edit command to the ontology. Returns description."""
         action = edit.action
 
@@ -216,11 +236,7 @@ class OntologyWorkspace:
             parent = edit.parent if edit.parent and edit.parent in self.onto.concepts else None
             self.onto.add_concept(edit.name, description=edit.description, parent=parent)
             for p in edit.properties:
-                dt = (
-                    p.data_type
-                    if p.data_type in {"string", "int", "float", "bool", "date"}
-                    else "string"
-                )
+                dt = p.data_type if p.data_type in VALID_DATA_TYPES else "string"
                 self.onto.add_property(edit.name, p.name, data_type=dt, required=p.required)
             self._edit_log.append({"action": "add_concept", "name": edit.name})
             return f"Added class '{edit.name}'"
@@ -231,11 +247,7 @@ class OntologyWorkspace:
             return f"Removed class '{edit.name}'"
 
         elif action == "add_relation":
-            card = (
-                edit.cardinality
-                if edit.cardinality in {"one-to-one", "one-to-many", "many-to-one", "many-to-many"}
-                else "many-to-many"
-            )
+            card = edit.cardinality
             self.onto.add_relation(
                 edit.name, source=edit.source, target=edit.target, cardinality=card
             )
@@ -248,11 +260,7 @@ class OntologyWorkspace:
             return f"Removed relation '{edit.name}'"
 
         elif action == "add_property":
-            dt = (
-                edit.data_type
-                if edit.data_type in {"string", "int", "float", "bool", "date"}
-                else "string"
-            )
+            dt = edit.data_type if edit.data_type in VALID_DATA_TYPES else "string"
             self.onto.add_property(edit.concept, edit.name, data_type=dt, required=edit.required)
             self._edit_log.append(
                 {"action": "add_property", "concept": edit.concept, "name": edit.name}
@@ -330,41 +338,3 @@ class OntologyWorkspace:
         reasoner = OWLReasoner(self.onto)
         result = reasoner.run_inference()
         return result.summary
-
-
-def _build_ontology_from_suggestion(suggestion) -> Ontology:
-    """Build an Ontology from an OntologySuggestion."""
-    onto = Ontology(suggestion.name, description=suggestion.description)
-
-    added: set[str] = set()
-    remaining = list(suggestion.concepts)
-    max_passes = len(remaining) + 1
-    while remaining and max_passes > 0:
-        max_passes -= 1
-        still_remaining = []
-        for c in remaining:
-            if c.parent and c.parent not in added:
-                still_remaining.append(c)
-            else:
-                parent = c.parent if c.parent and c.parent in added else None
-                onto.add_concept(c.name, description=c.description, parent=parent)
-                for p in c.properties:
-                    dt = (
-                        p.data_type
-                        if p.data_type in {"string", "int", "float", "bool", "date"}
-                        else "string"
-                    )
-                    onto.add_property(c.name, p.name, data_type=dt, required=p.required)
-                added.add(c.name)
-        remaining = still_remaining
-
-    for r in suggestion.relations:
-        if r.source in added and r.target in added:
-            card = (
-                r.cardinality
-                if r.cardinality in {"one-to-one", "one-to-many", "many-to-one", "many-to-many"}
-                else "many-to-many"
-            )
-            onto.add_relation(r.name, source=r.source, target=r.target, cardinality=card)
-
-    return onto

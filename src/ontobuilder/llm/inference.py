@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from ontobuilder.core.ontology import Ontology
+from ontobuilder.core.validation import VALID_DATA_TYPES
 from ontobuilder.llm.client import chat
 from ontobuilder.llm.schemas import OntologySuggestion
 from ontobuilder.llm.prompts import infer_prompt
@@ -67,6 +68,49 @@ def _read_text(path: Path, max_rows: int) -> str:
     return "\n".join(lines)
 
 
+def _normalize_data_type(data_type: str) -> str:
+    return data_type if data_type in VALID_DATA_TYPES else "string"
+
+
+def build_ontology_from_suggestion(suggestion: OntologySuggestion) -> Ontology:
+    """Build an Ontology from an LLM suggestion."""
+    onto = Ontology(suggestion.name, description=suggestion.description)
+
+    added: set[str] = set()
+    remaining = list(suggestion.concepts)
+    max_passes = len(remaining) + 1
+    while remaining and max_passes > 0:
+        max_passes -= 1
+        still_remaining = []
+        for concept in remaining:
+            if concept.parent and concept.parent not in added:
+                still_remaining.append(concept)
+                continue
+
+            parent = concept.parent if concept.parent and concept.parent in added else None
+            onto.add_concept(concept.name, description=concept.description, parent=parent)
+            for prop in concept.properties:
+                onto.add_property(
+                    concept.name,
+                    prop.name,
+                    data_type=_normalize_data_type(prop.data_type),
+                    required=prop.required,
+                )
+            added.add(concept.name)
+        remaining = still_remaining
+
+    for relation in suggestion.relations:
+        if relation.source in added and relation.target in added:
+            onto.add_relation(
+                relation.name,
+                source=relation.source,
+                target=relation.target,
+                cardinality=relation.cardinality,
+            )
+
+    return onto
+
+
 def infer_ontology(file_path: str | Path) -> Ontology | None:
     """Infer an ontology from a data file.
 
@@ -116,30 +160,7 @@ def infer_ontology(file_path: str | Path) -> Ontology | None:
         rprint("Cancelled.")
         return None
 
-    # Build the ontology
-    onto = Ontology(suggestion.name, description=suggestion.description)
-
-    added: set[str] = set()
-    remaining = list(suggestion.concepts)
-    max_passes = len(remaining) + 1
-    while remaining and max_passes > 0:
-        max_passes -= 1
-        still_remaining = []
-        for c in remaining:
-            if c.parent and c.parent not in added:
-                still_remaining.append(c)
-            else:
-                parent = c.parent if c.parent and c.parent in added else None
-                onto.add_concept(c.name, description=c.description, parent=parent)
-                for p in c.properties:
-                    dt = p.data_type if p.data_type in {"string", "int", "float", "bool", "date"} else "string"
-                    onto.add_property(c.name, p.name, data_type=dt, required=p.required)
-                added.add(c.name)
-        remaining = still_remaining
-
-    for r in suggestion.relations:
-        if r.source in added and r.target in added:
-            onto.add_relation(r.name, source=r.source, target=r.target, cardinality=r.cardinality)
+    onto = build_ontology_from_suggestion(suggestion)
 
     rprint("\n[bold green]Ontology built from data![/bold green]\n")
     rprint(onto.print_tree())

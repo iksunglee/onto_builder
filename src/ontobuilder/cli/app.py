@@ -20,33 +20,287 @@ app.add_typer(tool_app, name="tool", help="Analyze data and build OWL ontologies
 # -- Top-level project commands --
 
 
+def _read_env_file() -> dict[str, str]:
+    """Read key=value pairs from .env file."""
+    from pathlib import Path
+
+    env_file = Path(".env")
+    env_lines: dict[str, str] = {}
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                env_lines[k.strip()] = v.strip()
+    return env_lines
+
+
+def _write_env_file(env_lines: dict[str, str]) -> None:
+    """Write key=value pairs to .env file and update os.environ."""
+    import os
+    from pathlib import Path
+
+    env_file = Path(".env")
+    env_file.write_text("\n".join(f"{k}={v}" for k, v in env_lines.items()) + "\n")
+    for k, v in env_lines.items():
+        os.environ[k] = v
+
+
+def _test_llm_connection(provider: str, env_lines: dict[str, str]) -> str | None:
+    """Test LLM connection. Returns None on success, error message on failure."""
+    import os
+
+    # Temporarily set env vars for the test
+    old_env = {}
+    for k, v in env_lines.items():
+        old_env[k] = os.environ.get(k)
+        os.environ[k] = v
+
+    try:
+        model = env_lines.get("ONTOBUILDER_LLM_MODEL", "gpt-4o-mini")
+        test_msg = [{"role": "user", "content": "Say 'hello' in one word."}]
+
+        if provider == "anthropic":
+            from litellm import completion
+
+            completion(model=model, messages=test_msg, max_tokens=10)
+            return None
+
+        if provider == "local":
+            # First check if server is reachable
+            import urllib.request
+            import urllib.error
+
+            base = env_lines.get("OPENAI_BASE_URL", "http://localhost:11434/v1")
+            # Strip /v1 to check Ollama root
+            root = base.replace("/v1", "")
+            try:
+                urllib.request.urlopen(root, timeout=5)
+            except urllib.error.URLError:
+                return (
+                    f"Cannot reach local server at {root}\n"
+                    "  Make sure Ollama is running: ollama serve\n"
+                    "  Or check your LM Studio server is started."
+                )
+
+        # OpenAI, local, and custom all use OpenAI-compatible API
+        from openai import OpenAI
+
+        client_kwargs = {"api_key": env_lines.get("OPENAI_API_KEY", "not-needed")}
+        if "OPENAI_BASE_URL" in env_lines:
+            client_kwargs["base_url"] = env_lines["OPENAI_BASE_URL"]
+        client = OpenAI(**client_kwargs)
+        client.chat.completions.create(
+            model=model, messages=test_msg, max_tokens=10
+        )
+        return None
+    except Exception as e:
+        return str(e)
+    finally:
+        for k, v in old_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def _run_provider_wizard() -> bool:
+    """Interactive provider setup wizard. Returns True if configured."""
+    from rich import print as rprint
+    from rich.panel import Panel
+    from rich.prompt import Prompt
+
+    rprint(
+        Panel(
+            "[bold]Choose your AI provider:[/bold]\n\n"
+            "  [bold cyan][1][/bold cyan]  OpenAI            — GPT-4o-mini, GPT-4o  (needs API key)\n"
+            "  [bold cyan][2][/bold cyan]  Anthropic (Claude) — Claude Sonnet, Haiku (needs API key)\n"
+            "  [bold cyan][3][/bold cyan]  Local model        — Ollama, LM Studio    (free, runs on your machine)\n"
+            "  [bold cyan][4][/bold cyan]  Custom endpoint    — Any OpenAI-compatible server",
+            title="OntoBuilder — LLM Setup",
+            border_style="blue",
+        )
+    )
+
+    choice = Prompt.ask(
+        "Provider",
+        choices=["1", "2", "3", "4"],
+        default="1",
+    )
+
+    env_lines = _read_env_file()
+
+    if choice == "1":
+        # OpenAI
+        env_lines["ONTOBUILDER_PROVIDER"] = "openai"
+        key = Prompt.ask("\nOpenAI API key [bold dim](sk-...)[/bold dim]").strip()
+        if not key:
+            rprint("[yellow]No API key provided. Aborting.[/yellow]")
+            return False
+        env_lines["OPENAI_API_KEY"] = key
+        model = Prompt.ask(
+            "Model", default="gpt-4o-mini",
+        )
+        env_lines["ONTOBUILDER_LLM_MODEL"] = model
+
+    elif choice == "2":
+        # Anthropic
+        # Check litellm is installed
+        try:
+            import litellm  # noqa: F401
+            import instructor  # noqa: F401
+        except ImportError:
+            rprint(
+                "\n[red]Anthropic provider requires litellm.[/red]\n"
+                "Install with: [bold]pip install ontobuilder[llm][/bold]"
+            )
+            return False
+
+        env_lines["ONTOBUILDER_PROVIDER"] = "anthropic"
+        env_lines["ONTOBUILDER_LLM_BACKEND"] = "litellm"
+        key = Prompt.ask("\nAnthropic API key [bold dim](sk-ant-...)[/bold dim]").strip()
+        if not key:
+            rprint("[yellow]No API key provided. Aborting.[/yellow]")
+            return False
+        env_lines["ANTHROPIC_API_KEY"] = key
+        rprint(
+            "\n[dim]  Recommended models:[/dim]\n"
+            "  [dim]  claude-sonnet-4-5-20250514 — fast & capable (default)[/dim]\n"
+            "  [dim]  claude-haiku-4-5-20251001  — fastest & cheapest[/dim]\n"
+            "  [dim]  claude-opus-4-5-20250527   — most capable[/dim]"
+        )
+        model = Prompt.ask(
+            "Model", default="anthropic/claude-sonnet-4-5-20250514",
+        )
+        if not model.startswith("anthropic/"):
+            model = f"anthropic/{model}"
+        env_lines["ONTOBUILDER_LLM_MODEL"] = model
+
+    elif choice == "3":
+        # Local (Ollama / LM Studio)
+        env_lines["ONTOBUILDER_PROVIDER"] = "local"
+        rprint(
+            "\n[bold]Local model setup[/bold]\n"
+            "[dim]  Ollama:     Install from https://ollama.com then run: ollama serve[/dim]\n"
+            "[dim]  LM Studio:  Start the local server from the app[/dim]\n"
+        )
+        base_url = Prompt.ask(
+            "Server URL",
+            default="http://localhost:11434/v1",
+        )
+        env_lines["OPENAI_BASE_URL"] = base_url
+        env_lines["OPENAI_API_KEY"] = "not-needed"
+        rprint(
+            "\n[dim]  Popular models (install with: ollama pull <name>):[/dim]\n"
+            "  [dim]  llama3.2       — 3B, fast, good general use[/dim]\n"
+            "  [dim]  mistral        — 7B, strong reasoning[/dim]\n"
+            "  [dim]  gemma2         — 9B, Google's open model[/dim]\n"
+            "  [dim]  phi3           — 3.8B, Microsoft, very fast[/dim]"
+        )
+        model = Prompt.ask("Model", default="llama3.2")
+        env_lines["ONTOBUILDER_LLM_MODEL"] = model
+
+    elif choice == "4":
+        # Custom endpoint
+        env_lines["ONTOBUILDER_PROVIDER"] = "custom"
+        base_url = Prompt.ask("\nEndpoint URL [bold dim](e.g. http://localhost:8080/v1)[/bold dim]")
+        if not base_url.strip():
+            rprint("[yellow]No endpoint provided. Aborting.[/yellow]")
+            return False
+        env_lines["OPENAI_BASE_URL"] = base_url.strip()
+        key = Prompt.ask(
+            "API key [bold dim](press Enter if none needed)[/bold dim]",
+            default="not-needed",
+        )
+        env_lines["OPENAI_API_KEY"] = key
+        model = Prompt.ask("Model name")
+        if not model.strip():
+            rprint("[yellow]No model name provided. Aborting.[/yellow]")
+            return False
+        env_lines["ONTOBUILDER_LLM_MODEL"] = model.strip()
+
+    # Save configuration
+    _write_env_file(env_lines)
+    provider = env_lines.get("ONTOBUILDER_PROVIDER", "openai")
+    rprint("\n[green]Configuration saved to .env[/green]")
+
+    # Test connection
+    rprint("Testing connection...")
+    error = _test_llm_connection(provider, env_lines)
+    if error:
+        rprint(f"[yellow]Connection test failed:[/yellow] {error}")
+        rprint("[dim]Settings saved — you can fix the issue and try again.[/dim]")
+    else:
+        rprint("[bold green]Connected successfully![/bold green]")
+
+    return True
+
+
+def _ensure_llm_configured() -> bool:
+    """Check if LLM is configured; offer interactive setup if not.
+
+    Call this at the top of any command that needs an LLM.
+    Returns True if ready, False if user declined setup.
+    """
+    from ontobuilder.llm.client import is_configured
+
+    if is_configured():
+        return True
+
+    from rich import print as rprint
+    from rich.panel import Panel
+    from rich.prompt import Confirm
+
+    rprint(
+        Panel(
+            "[bold yellow]No LLM provider configured.[/bold yellow]\n\n"
+            "OntoBuilder needs an AI model to power interviews, inference, and chat.\n"
+            "You can use a cloud API (OpenAI, Claude) or a free local model (Ollama).\n\n"
+            "Run [bold]onto configure[/bold] or set up now:",
+            title="Setup Required",
+            border_style="yellow",
+        )
+    )
+
+    if Confirm.ask("Set up LLM provider now?", default=True):
+        return _run_provider_wizard()
+
+    rprint("[dim]Run 'onto configure' when you're ready.[/dim]")
+    return False
+
+
 @app.command()
 def configure(
-    api_key: str = typer.Option(None, "--api-key", "-k", help="OpenAI API key"),
-    model: str = typer.Option(
-        None, "--model", "-m", help="LLM model name (e.g., gpt-4o-mini, gpt-4o)"
+    api_key: str = typer.Option(None, "--api-key", "-k", help="API key"),
+    model: str = typer.Option(None, "--model", "-m", help="LLM model name"),
+    provider: str = typer.Option(
+        None, "--provider", "-p", help="Provider: openai, anthropic, local, custom"
     ),
     show: bool = typer.Option(False, "--show", help="Show current configuration"),
 ):
-    """Configure LLM settings (API key, model)."""
+    """Configure LLM settings — choose your AI provider."""
     import os
-    from pathlib import Path
     from rich import print as rprint
-
-    env_file = Path(".env")
+    from rich.panel import Panel
 
     if show:
-        current_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ONTOBUILDER_API_KEY")
+        prov = os.environ.get("ONTOBUILDER_PROVIDER", "(not set)")
+        current_key = (
+            os.environ.get("ONTOBUILDER_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("ANTHROPIC_API_KEY")
+        )
         current_model = os.environ.get("ONTOBUILDER_LLM_MODEL", "gpt-4o-mini")
         backend = os.environ.get("ONTOBUILDER_LLM_BACKEND", "auto")
-        masked = (
-            f"sk-...{current_key[-4:]}" if current_key and len(current_key) > 4 else "(not set)"
-        )
-        rprint(f"[bold]API Key:[/bold]  {masked}")
-        rprint(f"[bold]Model:[/bold]    {current_model}")
-        rprint(f"[bold]Backend:[/bold]  {backend}")
+        base_url = os.environ.get("OPENAI_BASE_URL", "(default)")
 
-        # Check what's installed
+        if current_key and len(current_key) > 8:
+            masked = f"{current_key[:6]}...{current_key[-4:]}"
+        elif current_key:
+            masked = "***"
+        else:
+            masked = "[red](not set)[/red]"
+
+        # Check installed backends
         backends = []
         try:
             import openai  # noqa: F401
@@ -61,53 +315,43 @@ def configure(
             backends.append("litellm+instructor")
         except ImportError:
             pass
+
         rprint(
-            f"[bold]Installed:[/bold] {', '.join(backends) if backends else '[red]none[/red] (pip install openai)'}"
+            Panel(
+                f"[bold]Provider:[/bold]  {prov}\n"
+                f"[bold]API Key:[/bold]   {masked}\n"
+                f"[bold]Model:[/bold]     {current_model}\n"
+                f"[bold]Backend:[/bold]   {backend}\n"
+                f"[bold]Base URL:[/bold]  {base_url}\n"
+                f"[bold]Installed:[/bold] "
+                f"{', '.join(backends) if backends else '[red]none[/red]'}",
+                title="Current LLM Configuration",
+                border_style="blue",
+            )
         )
         return
 
-    # Interactive setup if no flags
-    if not api_key and not model:
-        rprint("[bold]OntoBuilder LLM Configuration[/bold]\n")
-        api_key = input("OpenAI API key (sk-...): ").strip()
-        model_input = input("Model name [gpt-4o-mini]: ").strip()
-        if model_input:
-            model = model_input
+    # Non-interactive: flags provided
+    if api_key or model or provider:
+        env_lines = _read_env_file()
+        if provider:
+            env_lines["ONTOBUILDER_PROVIDER"] = provider
+            if provider == "anthropic":
+                env_lines["ONTOBUILDER_LLM_BACKEND"] = "litellm"
+        if api_key:
+            prov = provider or env_lines.get("ONTOBUILDER_PROVIDER", "openai")
+            if prov == "anthropic":
+                env_lines["ANTHROPIC_API_KEY"] = api_key
+            else:
+                env_lines["OPENAI_API_KEY"] = api_key
+        if model:
+            env_lines["ONTOBUILDER_LLM_MODEL"] = model
+        _write_env_file(env_lines)
+        rprint("[green]Configuration saved to .env[/green]")
+        return
 
-    # Write to .env file
-    env_lines = {}
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            if "=" in line and not line.startswith("#"):
-                k, v = line.split("=", 1)
-                env_lines[k.strip()] = v.strip()
-
-    if api_key:
-        env_lines["OPENAI_API_KEY"] = api_key
-        os.environ["OPENAI_API_KEY"] = api_key
-    if model:
-        env_lines["ONTOBUILDER_LLM_MODEL"] = model
-        os.environ["ONTOBUILDER_LLM_MODEL"] = model
-
-    env_file.write_text("\n".join(f"{k}={v}" for k, v in env_lines.items()) + "\n")
-    rprint(f"[green]Configuration saved to {env_file}[/green]")
-
-    # Verify connection
-    if api_key:
-        rprint("\nTesting connection...")
-        try:
-            from ontobuilder.llm.openai_client import get_client
-
-            client = get_client(api_key)
-            resp = client.chat.completions.create(
-                model=model or "gpt-4o-mini",
-                messages=[{"role": "user", "content": "Say 'ok' in one word."}],
-                max_tokens=5,
-            )
-            rprint(f"[green]Connected! Response: {resp.choices[0].message.content}[/green]")
-        except Exception as e:
-            rprint(f"[yellow]Connection test failed: {e}[/yellow]")
-            rprint("The key was saved - you can test again later.")
+    # Interactive wizard
+    _run_provider_wizard()
 
 
 @app.command()
@@ -342,6 +586,9 @@ def interview(
     domain: str = typer.Option(None, "--domain", "-d", help="Domain template for hints"),
 ):
     """Start an AI-powered interview to build an ontology."""
+    if not _ensure_llm_configured():
+        raise typer.Exit(1)
+
     from ontobuilder.llm.interview import run_interview
     from ontobuilder.serialization.yaml_io import save_yaml
     from ontobuilder.cli.helpers import DEFAULT_FILE
@@ -368,6 +615,9 @@ def infer(
     file: str = typer.Argument(..., help="Path to data file (CSV, JSON, or text)"),
 ):
     """Infer an ontology structure from a data file using AI."""
+    if not _ensure_llm_configured():
+        raise typer.Exit(1)
+
     from ontobuilder.llm.inference import infer_ontology
     from ontobuilder.serialization.yaml_io import save_yaml
     from ontobuilder.cli.helpers import DEFAULT_FILE
@@ -538,6 +788,9 @@ def workspace(
     output: str = typer.Option(None, "--output", "-o", help="Auto-save OWL file on exit"),
 ):
     """Open a live workspace: analyze data, build ontology, refine via chat, export OWL."""
+    if not _ensure_llm_configured():
+        raise typer.Exit(1)
+
     from pathlib import Path
     from rich import print as rprint
     from rich.panel import Panel

@@ -6,7 +6,9 @@ Priority:
 3. Raises ImportError with install instructions
 
 Configuration (env vars):
-    OPENAI_API_KEY or ONTOBUILDER_API_KEY — API key
+    ONTOBUILDER_PROVIDER — provider: openai, anthropic, local, custom
+    OPENAI_API_KEY or ONTOBUILDER_API_KEY — API key (OpenAI/custom)
+    ANTHROPIC_API_KEY — API key (Anthropic)
     ONTOBUILDER_LLM_MODEL — model name (default: gpt-4o-mini)
     ONTOBUILDER_LLM_BACKEND — force backend: "litellm" or "openai"
 """
@@ -14,9 +16,14 @@ Configuration (env vars):
 from __future__ import annotations
 
 import os
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 
 T = TypeVar("T")
+
+
+def get_provider() -> str:
+    """Get the configured provider name."""
+    return os.environ.get("ONTOBUILDER_PROVIDER", "").lower()
 
 
 def get_model() -> str:
@@ -25,8 +32,21 @@ def get_model() -> str:
 
 
 def get_api_key() -> str | None:
-    """Get the configured API key."""
-    return os.environ.get("ONTOBUILDER_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    """Get the configured API key (any provider)."""
+    return (
+        os.environ.get("ONTOBUILDER_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+        or os.environ.get("ANTHROPIC_API_KEY")
+    )
+
+
+def is_configured() -> bool:
+    """Check if any LLM provider is configured."""
+    if get_provider():
+        return True
+    if get_api_key():
+        return True
+    return False
 
 
 def _get_backend() -> str:
@@ -35,16 +55,32 @@ def _get_backend() -> str:
     if forced in ("litellm", "openai"):
         return forced
 
+    # Anthropic provider requires litellm
+    provider = get_provider()
+    if provider == "anthropic":
+        try:
+            import instructor  # noqa: F401
+            import litellm  # noqa: F401
+
+            return "litellm"
+        except ImportError:
+            raise ImportError(
+                "Anthropic provider requires litellm. Install with:\n"
+                "  pip install ontobuilder[llm]"
+            )
+
     # Auto-detect: prefer litellm if available, fall back to openai
     try:
         import instructor  # noqa: F401
         import litellm  # noqa: F401
+
         return "litellm"
     except ImportError:
         pass
 
     try:
         import openai  # noqa: F401
+
         return "openai"
     except ImportError:
         pass
@@ -70,6 +106,22 @@ def create_client():
     return instructor.from_litellm(completion)
 
 
+@overload
+def chat(
+    messages: list[dict[str, str]],
+    response_model: type[T],
+    **kwargs: Any,
+) -> T: ...
+
+
+@overload
+def chat(
+    messages: list[dict[str, str]],
+    response_model: None = None,
+    **kwargs: Any,
+) -> str: ...
+
+
 def chat(
     messages: list[dict[str, str]],
     response_model: type[T] | None = None,
@@ -85,6 +137,7 @@ def chat(
 
     if backend == "openai":
         from ontobuilder.llm.openai_client import chat as openai_chat
+
         return openai_chat(messages, response_model=response_model, **kwargs)
 
     # litellm backend
@@ -100,5 +153,6 @@ def chat(
         )
     else:
         from litellm import completion
+
         resp = completion(model=model, messages=messages, **kwargs)
         return resp.choices[0].message.content

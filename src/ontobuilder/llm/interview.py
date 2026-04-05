@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ontobuilder.core.ontology import Ontology
 from ontobuilder.llm.client import chat
+from ontobuilder.llm.inference import build_ontology_from_suggestion
 from ontobuilder.llm.schemas import (
     InterviewQuestions,
     OntologySuggestion,
@@ -92,29 +93,14 @@ def run_interview(domain_hints: dict | None = None) -> Ontology | None:
 
     # Step 4: Build the ontology
     rprint("\n[bold]Step 4: Building your ontology[/bold]\n")
-    onto = Ontology(suggestion.name, description=suggestion.description)
-
-    # Add concepts in parent-first order
-    added: set[str] = set()
-    remaining = list(confirmed_concepts)
-    max_passes = len(remaining) + 1
-    while remaining and max_passes > 0:
-        max_passes -= 1
-        still_remaining = []
-        for c in remaining:
-            if c.parent and c.parent not in added:
-                still_remaining.append(c)
-            else:
-                parent = c.parent if c.parent and c.parent in added else None
-                onto.add_concept(c.name, description=c.description, parent=parent)
-                for p in c.properties:
-                    dt = p.data_type if p.data_type in {"string", "int", "float", "bool", "date"} else "string"
-                    onto.add_property(c.name, p.name, data_type=dt, required=p.required)
-                added.add(c.name)
-        remaining = still_remaining
-
-    for r in confirmed_relations:
-        onto.add_relation(r.name, source=r.source, target=r.target, cardinality=r.cardinality)
+    onto = build_ontology_from_suggestion(
+        OntologySuggestion(
+            name=suggestion.name,
+            description=suggestion.description,
+            concepts=confirmed_concepts,
+            relations=confirmed_relations,
+        )
+    )
 
     rprint("\n[bold green]Ontology built successfully![/bold green]\n")
     rprint(onto.print_tree())

@@ -498,49 +498,9 @@ with tab_upload:
                             messages, response_model=OntologySuggestion
                         )
 
-                        # Build the ontology
-                        new_onto = Ontology(suggestion.name, description=suggestion.description)
-                        added: set[str] = set()
-                        remaining = list(suggestion.concepts)
-                        max_passes = len(remaining) + 1
-                        while remaining and max_passes > 0:
-                            max_passes -= 1
-                            still_remaining = []
-                            for c in remaining:
-                                if c.parent and c.parent not in added:
-                                    still_remaining.append(c)
-                                else:
-                                    parent = c.parent if c.parent and c.parent in added else None
-                                    new_onto.add_concept(
-                                        c.name, description=c.description, parent=parent
-                                    )
-                                    for p in c.properties:
-                                        dt = (
-                                            p.data_type
-                                            if p.data_type
-                                            in {"string", "int", "float", "bool", "date"}
-                                            else "string"
-                                        )
-                                        try:
-                                            new_onto.add_property(
-                                                c.name, p.name, data_type=dt, required=p.required
-                                            )
-                                        except ValidationError:
-                                            pass
-                                    added.add(c.name)
-                            remaining = still_remaining
+                        from ontobuilder.llm.inference import build_ontology_from_suggestion
 
-                        for r in suggestion.relations:
-                            if r.source in added and r.target in added:
-                                try:
-                                    new_onto.add_relation(
-                                        r.name,
-                                        source=r.source,
-                                        target=r.target,
-                                        cardinality=r.cardinality,
-                                    )
-                                except ValidationError:
-                                    pass
+                        new_onto = build_ontology_from_suggestion(suggestion)
 
                         set_onto(new_onto)
                         onto = new_onto
