@@ -93,7 +93,7 @@ ontobuilder init "Hospital Booking"
 ontobuilder concept add Patient --description "A person receiving care"
 ontobuilder concept add Surgeon
 ontobuilder concept add SurgeryBooking
-ontobuilder relation add assigned_surgeon --source SurgeryBooking --target Surgeon
+ontobuilder relation add assigned_surgeon --from SurgeryBooking --to Surgeon
 ontobuilder info
 ontobuilder owl export --format turtle
 ontobuilder owl reason
@@ -129,7 +129,7 @@ Then you can use:
 ```bash
 ontobuilder interview
 ontobuilder infer data.csv            # AI-powered
-ontobuilder infer data.csv --local    # offline, no API key
+ontobuilder infer data.csv --local    # offline, no API key; launches interactive review
 ontobuilder workspace data.csv
 ```
 
@@ -169,7 +169,7 @@ The app includes concept editing, graph visualization, CSV-assisted ontology bui
 | `ontobuilder domains list/apply` | List and apply built-in domain templates |
 | `ontobuilder configure` | Configure an LLM provider |
 | `ontobuilder interview` | Build an ontology through an AI-assisted interview |
-| `ontobuilder infer` | Infer an ontology draft from a data file (use `--local` for offline) |
+| `ontobuilder infer` | Infer an ontology draft from a data file (use `--local` for offline interactive review) |
 | `ontobuilder chat` | Ask questions about the current ontology |
 | `ontobuilder workspace` | Open a live AI-assisted ontology workspace |
 
