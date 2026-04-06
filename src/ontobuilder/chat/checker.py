@@ -83,28 +83,51 @@ class OntologyChat:
 
         Tries LLM first, falls back to keyword matching.
         """
+        from ontobuilder.llm.client import is_configured
+
+        if not is_configured():
+            return self._answer_without_llm(question)
+
         try:
             return self._llm_answer(question)
         except ImportError:
-            # LLM not available - use keyword answer or generic fallback
-            keyword_answer = self._keyword_answer(question)
-            if keyword_answer:
-                return keyword_answer
-            return self._fallback_answer(question)
+            return self._answer_without_llm(question)
         except Exception as exc:
-            # Surface runtime LLM failures while still giving a useful fallback answer.
+            reason = self._summarize_llm_error(exc)
             keyword_answer = self._keyword_answer(question)
             if keyword_answer:
                 return (
-                    "LLM failed at runtime, so I used ontology-based reasoning instead.\n"
-                    f"Reason: {exc}\n\n"
+                    "The configured LLM is unavailable right now, so I used ontology-based reasoning instead.\n"
+                    f"Reason: {reason}\n\n"
                     f"{keyword_answer}"
                 )
             return (
-                "LLM failed at runtime, so I used ontology-based fallback guidance instead.\n"
-                f"Reason: {exc}\n\n"
+                "The configured LLM is unavailable right now, so I used ontology-based fallback guidance instead.\n"
+                f"Reason: {reason}\n\n"
                 f"{self._fallback_answer(question)}"
             )
+
+    def _answer_without_llm(self, question: str) -> str:
+        """Use keyword matching or generic fallback when no LLM is available."""
+        keyword_answer = self._keyword_answer(question)
+        if keyword_answer:
+            return keyword_answer
+        return self._fallback_answer(question)
+
+    def _summarize_llm_error(self, exc: Exception) -> str:
+        """Convert noisy provider errors into a short user-facing reason."""
+        message = str(exc).strip()
+        lowered = message.lower()
+
+        if any(
+            token in lowered for token in ("api_key", "api key", "authentication", "unauthorized")
+        ):
+            return "the configured provider could not authenticate"
+        if any(
+            token in lowered for token in ("timed out", "timeout", "connection", "connect", "dns")
+        ):
+            return "the configured provider could not be reached"
+        return "the configured provider returned an error"
 
     def infer_user_intent(self, limit: int = 5, *, include_consistency: bool = True) -> list[str]:
         """Infer likely next actions a user wants to take based on ontology state."""
@@ -115,7 +138,9 @@ class OntologyChat:
                 "Add your first core concept (for example Product, Person, or Event)."
             )
             suggestions.append("Define 3-5 domain concepts before adding relations or instances.")
-            suggestions.append("Use 'ontobuilder concept add <Name>' to start building the class model.")
+            suggestions.append(
+                "Use 'ontobuilder concept add <Name>' to start building the class model."
+            )
             return suggestions[:limit]
 
         concept_names = sorted(self.onto.concepts)

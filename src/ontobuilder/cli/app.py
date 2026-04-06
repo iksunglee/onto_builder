@@ -82,16 +82,9 @@ def _test_llm_connection(provider: str, env_lines: dict[str, str]) -> str | None
                     "  Or check your LM Studio server is started."
                 )
 
-        # OpenAI, local, and custom all use OpenAI-compatible API
-        from openai import OpenAI
+        from ontobuilder.llm.client import chat as llm_chat
 
-        client_kwargs = {"api_key": env_lines.get("OPENAI_API_KEY", "not-needed")}
-        if "OPENAI_BASE_URL" in env_lines:
-            client_kwargs["base_url"] = env_lines["OPENAI_BASE_URL"]
-        client = OpenAI(**client_kwargs)
-        client.chat.completions.create(
-            model=model, messages=test_msg, max_tokens=10
-        )
+        llm_chat(test_msg, model=model, max_tokens=10)
         return None
     except Exception as e:
         return str(e)
@@ -106,17 +99,18 @@ def _test_llm_connection(provider: str, env_lines: dict[str, str]) -> str | None
 def _run_provider_wizard() -> bool:
     """Interactive provider setup wizard. Returns True if configured."""
     from rich import print as rprint
+    from rich.markup import escape
     from rich.panel import Panel
     from rich.prompt import Prompt
 
     rprint(
         Panel(
             "[bold]Choose your AI provider:[/bold]\n\n"
-            "  [bold cyan][1][/bold cyan]  OpenAI            — GPT-4o-mini, GPT-4o  (needs API key)\n"
-            "  [bold cyan][2][/bold cyan]  Anthropic (Claude) — Claude Sonnet, Haiku (needs API key)\n"
-            "  [bold cyan][3][/bold cyan]  Local model        — Ollama, LM Studio    (free, runs on your machine)\n"
-            "  [bold cyan][4][/bold cyan]  Custom endpoint    — Any OpenAI-compatible server",
-            title="OntoBuilder — LLM Setup",
+            "  [bold cyan][1][/bold cyan]  OpenAI            - GPT-4o-mini, GPT-4o  (needs API key)\n"
+            "  [bold cyan][2][/bold cyan]  Anthropic (Claude) - Claude Sonnet, Haiku (needs API key)\n"
+            "  [bold cyan][3][/bold cyan]  Local model        - Ollama, LM Studio    (free, runs on your machine)\n"
+            "  [bold cyan][4][/bold cyan]  Custom endpoint    - Any OpenAI-compatible server",
+            title="OntoBuilder - LLM Setup",
             border_style="blue",
         )
     )
@@ -138,7 +132,8 @@ def _run_provider_wizard() -> bool:
             return False
         env_lines["OPENAI_API_KEY"] = key
         model = Prompt.ask(
-            "Model", default="gpt-4o-mini",
+            "Model",
+            default="gpt-4o-mini",
         )
         env_lines["ONTOBUILDER_LLM_MODEL"] = model
 
@@ -151,7 +146,7 @@ def _run_provider_wizard() -> bool:
         except ImportError:
             rprint(
                 "\n[red]Anthropic provider requires litellm.[/red]\n"
-                "Install with: [bold]pip install ontobuilder[llm][/bold]"
+                f"Install with: [bold]{escape('pip install ontobuilder[llm]')}[/bold]"
             )
             return False
 
@@ -164,12 +159,13 @@ def _run_provider_wizard() -> bool:
         env_lines["ANTHROPIC_API_KEY"] = key
         rprint(
             "\n[dim]  Recommended models:[/dim]\n"
-            "  [dim]  claude-sonnet-4-5-20250514 — fast & capable (default)[/dim]\n"
-            "  [dim]  claude-haiku-4-5-20251001  — fastest & cheapest[/dim]\n"
-            "  [dim]  claude-opus-4-5-20250527   — most capable[/dim]"
+            "  [dim]  claude-sonnet-4-5-20250514 - fast & capable (default)[/dim]\n"
+            "  [dim]  claude-haiku-4-5-20251001  - fastest & cheapest[/dim]\n"
+            "  [dim]  claude-opus-4-5-20250527   - most capable[/dim]"
         )
         model = Prompt.ask(
-            "Model", default="anthropic/claude-sonnet-4-5-20250514",
+            "Model",
+            default="anthropic/claude-sonnet-4-5-20250514",
         )
         if not model.startswith("anthropic/"):
             model = f"anthropic/{model}"
@@ -191,10 +187,10 @@ def _run_provider_wizard() -> bool:
         env_lines["OPENAI_API_KEY"] = "not-needed"
         rprint(
             "\n[dim]  Popular models (install with: ollama pull <name>):[/dim]\n"
-            "  [dim]  llama3.2       — 3B, fast, good general use[/dim]\n"
-            "  [dim]  mistral        — 7B, strong reasoning[/dim]\n"
-            "  [dim]  gemma2         — 9B, Google's open model[/dim]\n"
-            "  [dim]  phi3           — 3.8B, Microsoft, very fast[/dim]"
+            "  [dim]  llama3.2       - 3B, fast, good general use[/dim]\n"
+            "  [dim]  mistral        - 7B, strong reasoning[/dim]\n"
+            "  [dim]  gemma2         - 9B, Google's open model[/dim]\n"
+            "  [dim]  phi3           - 3.8B, Microsoft, very fast[/dim]"
         )
         model = Prompt.ask("Model", default="llama3.2")
         env_lines["ONTOBUILDER_LLM_MODEL"] = model
@@ -202,7 +198,9 @@ def _run_provider_wizard() -> bool:
     elif choice == "4":
         # Custom endpoint
         env_lines["ONTOBUILDER_PROVIDER"] = "custom"
-        base_url = Prompt.ask("\nEndpoint URL [bold dim](e.g. http://localhost:8080/v1)[/bold dim]")
+        base_url = Prompt.ask(
+            "\nEndpoint URL [bold dim](e.g. http://localhost:8080/v1)[/bold dim]"
+        )
         if not base_url.strip():
             rprint("[yellow]No endpoint provided. Aborting.[/yellow]")
             return False
@@ -228,7 +226,7 @@ def _run_provider_wizard() -> bool:
     error = _test_llm_connection(provider, env_lines)
     if error:
         rprint(f"[yellow]Connection test failed:[/yellow] {error}")
-        rprint("[dim]Settings saved — you can fix the issue and try again.[/dim]")
+        rprint("[dim]Settings saved - you can fix the issue and try again.[/dim]")
     else:
         rprint("[bold green]Connected successfully![/bold green]")
 
@@ -253,7 +251,8 @@ def _ensure_llm_configured() -> bool:
     rprint(
         Panel(
             "[bold yellow]No LLM provider configured.[/bold yellow]\n\n"
-            "OntoBuilder needs an AI model to power interviews, inference, and chat.\n"
+            "Some OntoBuilder features need an AI model: interviews, AI inference, and the live workspace.\n"
+            "You can still use the core CLI, infer --local, and basic ontology chat without one.\n\n"
             "You can use a cloud API (OpenAI, Claude) or a free local model (Ollama).\n\n"
             "Run [bold]ontobuilder configure[/bold] or set up now:",
             title="Setup Required",
@@ -277,7 +276,7 @@ def configure(
     ),
     show: bool = typer.Option(False, "--show", help="Show current configuration"),
 ):
-    """Configure LLM settings — choose your AI provider."""
+    """Configure LLM settings - choose your AI provider."""
     import os
     from rich import print as rprint
     from rich.panel import Panel
@@ -614,22 +613,27 @@ def interview(
 def infer(
     file: str = typer.Argument(None, help="Path to data file (CSV, JSON, or text)"),
     local: bool = typer.Option(
-        False, "--local", "-l",
-        help="Use local heuristic analysis (no LLM or API key needed)",
+        False,
+        "--local",
+        "-l",
+        help="Use local heuristic analysis with interactive review (no LLM or API key needed)",
     ),
     text: str = typer.Option(
-        None, "--text", "-t",
+        None,
+        "--text",
+        "-t",
         help="Inline text/data to infer from (instead of a file)",
     ),
     stdin: bool = typer.Option(
-        False, "--stdin",
+        False,
+        "--stdin",
         help="Read data from stdin (pipe or paste, end with Ctrl+D)",
     ),
 ):
     """Infer an ontology structure from data.
 
     Provide data as a file path, inline text, or via stdin.
-    Uses AI by default; use --local for fast offline analysis (CSV/JSON files only).
+    Uses AI by default; use --local for offline analysis with interactive review (CSV/JSON files only).
 
     Examples:
       ontobuilder infer data.csv --local
@@ -647,9 +651,7 @@ def infer(
     # Resolve input source
     if text:
         # Write inline text to a temp file so the inference pipeline can read it
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False, encoding="utf-8"
-        )
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8")
         tmp.write(text.replace("\\n", "\n"))
         tmp.close()
         file = tmp.name
@@ -658,9 +660,7 @@ def infer(
         if not data.strip():
             typer.echo("No data received on stdin.")
             raise typer.Exit(1)
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False, encoding="utf-8"
-        )
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8")
         tmp.write(data)
         tmp.close()
         file = tmp.name
@@ -794,6 +794,7 @@ def chat(
     """Chat with your ontology - ask questions in natural language."""
     from rich import print as rprint
     from rich.panel import Panel
+    from rich.text import Text
     from ontobuilder.chat.checker import OntologyChat
     from ontobuilder.cli.helpers import load_current_ontology
 
@@ -802,7 +803,7 @@ def chat(
 
     if question:
         answer = checker.ask(question)
-        rprint(Panel(answer, title="Answer", border_style="blue"))
+        rprint(Panel(Text(answer), title="Answer", border_style="blue"))
         return
 
     # Interactive mode
@@ -824,7 +825,8 @@ def chat(
         if not q or q.lower() in ("quit", "exit", "q"):
             break
         answer = checker.ask(q)
-        rprint(f"\n[bold blue]Assistant:[/bold blue] {answer}")
+        rprint("\n[bold blue]Assistant:[/bold blue]")
+        rprint(Text(answer))
 
 
 # -- Workspace command (data -> infer -> chat-refine -> OWL export) --
@@ -838,6 +840,8 @@ def workspace(
     output: str = typer.Option(None, "--output", "-o", help="Auto-save OWL file on exit"),
 ):
     """Open a live workspace: analyze data, build ontology, refine via chat, export OWL."""
+    from rich.markup import escape
+
     if not _ensure_llm_configured():
         raise typer.Exit(1)
 
@@ -855,7 +859,7 @@ def workspace(
         try:
             ws = OntologyWorkspace.from_data(file)
         except ImportError:
-            rprint("[red]LLM features require: pip install ontobuilder[llm][/red]")
+            rprint(f"[red]LLM features require: {escape('pip install ontobuilder[llm]')}[/red]")
             raise typer.Exit(1)
         except FileNotFoundError as e:
             rprint(f"[red]{e}[/red]")
@@ -933,7 +937,7 @@ def workspace(
         try:
             result = ws.ask(msg)
         except ImportError:
-            rprint("[red]LLM features require: pip install ontobuilder[llm][/red]")
+            rprint(f"[red]LLM features require: {escape('pip install ontobuilder[llm]')}[/red]")
             continue
         except Exception as e:
             rprint(f"[red]Error: {e}[/red]")

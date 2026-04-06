@@ -1,4 +1,4 @@
-"""Infer ontology structure from data — via LLM or local heuristics."""
+"""Infer ontology structure from data - via LLM or local heuristics."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from ontobuilder.core.ontology import Ontology
 from ontobuilder.core.validation import VALID_DATA_TYPES
 
 if TYPE_CHECKING:
-    from ontobuilder.llm.schemas import OntologySuggestion
+    from ontobuilder.llm.schemas import ConceptSuggestion, OntologySuggestion
 
 
 def read_sample_data(file_path: str | Path, max_rows: int = 20) -> str:
@@ -97,7 +97,7 @@ def _build_analysis_context(file_path: str | Path) -> str:
                 parts.append("likely primary ID")
             if col.is_foreign_key:
                 ref = col.referenced_entity or "unknown"
-                parts.append(f"likely foreign key → {ref}")
+                parts.append(f"likely foreign key -> {ref}")
             if col.is_categorical:
                 cats = ", ".join(col.categories[:8]) if col.categories else ""
                 parts.append(f"categorical ({col.unique_count} values: {cats})")
@@ -110,9 +110,7 @@ def _build_analysis_context(file_path: str | Path) -> str:
         if suggestions.relations:
             lines.append("Suggested relationships:")
             for rel in suggestions.relations:
-                lines.append(
-                    f"- {rel.source} --[{rel.name}]--> {rel.target} ({rel.cardinality})"
-                )
+                lines.append(f"- {rel.source} --[{rel.name}]--> {rel.target} ({rel.cardinality})")
 
         if profile.cleaning_suggestions:
             lines.append("Data signals:")
@@ -191,7 +189,7 @@ def infer_ontology(file_path: str | Path, *, local: bool = False) -> Ontology | 
 
 
 def _infer_local(path: Path) -> Ontology | None:
-    """Infer ontology using local heuristic analysis — no LLM required.
+    """Infer ontology using local heuristic analysis - no LLM required.
 
     Delegates to InteractiveBuilder which lets users review and edit
     every concept, property, and relation before building.
@@ -214,7 +212,7 @@ def _show_data_overview(path: Path) -> None:
         analyzer = DataAnalyzer()
         profile = analyzer.analyze(str(path))
     except (ValueError, FileNotFoundError):
-        return  # text files or missing files — skip analysis
+        return  # text files or missing files - skip analysis
 
     table = Table(title=f"Data Breakdown: {path.name}")
     table.add_column("Column", style="bold")
@@ -229,7 +227,7 @@ def _show_data_overview(path: Path) -> None:
         if col.is_id_like:
             role = "ID"
         elif col.is_foreign_key:
-            ref = f" → {col.referenced_entity}" if col.referenced_entity else ""
+            ref = f" -> {col.referenced_entity}" if col.referenced_entity else ""
             role = f"FK{ref}"
         elif col.is_categorical:
             role = f"Category ({col.unique_count})"
@@ -254,14 +252,14 @@ def _show_data_overview(path: Path) -> None:
         )
         for cs in profile.cleaning_suggestions:
             rprint(f"  [yellow]![/yellow] [bold]{cs.column}[/bold]: {cs.description}")
-            rprint(f"    → {cs.suggestion}")
+            rprint(f"    -> {cs.suggestion}")
             if cs.sample:
                 rprint(f"    [dim]e.g. {cs.sample}[/dim]")
         rprint()
 
 
 def _infer_llm(path: Path) -> Ontology | None:
-    """Infer ontology using LLM — with per-node review and edit loop."""
+    """Infer ontology using LLM - with per-node review and edit loop."""
     from rich import print as rprint
     from rich.prompt import Confirm, Prompt
 
@@ -313,9 +311,7 @@ def _infer_llm(path: Path) -> Ontology | None:
 
     # Step 2: Suggest sub-categories based on confirmed concepts + data
     confirmed_names = [c.name for c in confirmed_concepts]
-    subcategory_concepts = _suggest_subcategories(
-        confirmed_names, sample, analysis_context
-    )
+    subcategory_concepts = _suggest_subcategories(confirmed_names, sample, analysis_context)
     if subcategory_concepts:
         rprint("\n[bold]Review sub-categories (from data values):[/bold]")
         for sc in subcategory_concepts:
@@ -365,7 +361,7 @@ def _suggest_subcategories(
     confirmed_concepts: list[str],
     data_sample: str,
     analysis_context: str,
-) -> list:
+) -> list["ConceptSuggestion"]:
     """Ask the LLM to suggest specific sub-categories based on confirmed concepts + data."""
     from rich import print as rprint
 
