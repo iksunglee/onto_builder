@@ -127,6 +127,21 @@ def _normalize_data_type(data_type: str) -> str:
     return data_type if data_type in VALID_DATA_TYPES else "string"
 
 
+def _parse_number_input(text: str, total: int) -> set[int]:
+    """Parse comma-separated numbers like '1,3,5' into a set of ints.
+
+    Ignores out-of-range values and non-numeric tokens.
+    """
+    result: set[int] = set()
+    for part in text.split(","):
+        part = part.strip()
+        if part.isdigit():
+            n = int(part)
+            if 1 <= n <= total:
+                result.add(n)
+    return result
+
+
 def build_ontology_from_suggestion(suggestion: OntologySuggestion) -> Ontology:
     """Build an Ontology from an LLM suggestion."""
     onto = Ontology(suggestion.name, description=suggestion.description)
@@ -138,6 +153,8 @@ def build_ontology_from_suggestion(suggestion: OntologySuggestion) -> Ontology:
         max_passes -= 1
         still_remaining = []
         for concept in remaining:
+            if concept.name in added:
+                continue
             if concept.parent and concept.parent not in added:
                 still_remaining.append(concept)
                 continue
@@ -261,7 +278,7 @@ def _show_data_overview(path: Path) -> None:
 def _infer_llm(path: Path) -> Ontology | None:
     """Infer ontology using LLM - with per-node review and edit loop."""
     from rich import print as rprint
-    from rich.prompt import Confirm, Prompt
+    from rich.prompt import Prompt
 
     from ontobuilder.llm.client import chat
     from ontobuilder.llm.schemas import OntologySuggestion
@@ -288,22 +305,31 @@ def _infer_llm(path: Path) -> Ontology | None:
     if suggestion.description:
         rprint(f"  {suggestion.description}")
 
-    # Step 1: Review concepts one by one
-    rprint("\n[bold]Review concepts:[/bold]")
-    confirmed_concepts = []
-    for c in suggestion.concepts:
-        parent = f" (child of {c.parent})" if c.parent else ""
-        props = ", ".join(f"{p.name}:{p.data_type}" for p in c.properties)
-        rprint(f"\n  [bold]{c.name}[/bold]{parent}")
-        if c.description:
-            rprint(f"  {c.description}")
-        if props:
-            rprint(f"  Properties: {props}")
+    # Step 1: Review concepts as a checklist
+    from rich.table import Table
 
-        if Confirm.ask("  Include?", default=True):
-            new_name = Prompt.ask("  Name", default=c.name)
-            c.name = new_name
-            confirmed_concepts.append(c)
+    rprint("\n[bold]Review concepts:[/bold]")
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Concept", style="bold")
+    table.add_column("Parent")
+    table.add_column("Properties")
+    table.add_column("Description")
+    for i, c in enumerate(suggestion.concepts, 1):
+        parent = c.parent or ""
+        props = ", ".join(f"{p.name}:{p.data_type}" for p in c.properties)
+        table.add_row(str(i), c.name, parent, props, c.description or "")
+    rprint(table)
+
+    rprint("\n[dim]All concepts are included by default.[/dim]")
+    exclude_input = Prompt.ask(
+        "  Exclude numbers (comma-separated, or Enter to keep all)",
+        default="",
+    )
+    exclude_set = _parse_number_input(exclude_input, len(suggestion.concepts))
+    confirmed_concepts = [
+        c for i, c in enumerate(suggestion.concepts, 1) if i not in exclude_set
+    ]
 
     if not confirmed_concepts:
         rprint("[yellow]No concepts accepted. Aborting.[/yellow]")
@@ -314,16 +340,26 @@ def _infer_llm(path: Path) -> Ontology | None:
     subcategory_concepts = _suggest_subcategories(confirmed_names, sample, analysis_context)
     if subcategory_concepts:
         rprint("\n[bold]Review sub-categories (from data values):[/bold]")
-        for sc in subcategory_concepts:
-            rprint(f"\n  [bold]{sc.name}[/bold] (child of {sc.parent})")
-            if sc.description:
-                rprint(f"  {sc.description}")
-            if Confirm.ask("  Include?", default=True):
-                new_name = Prompt.ask("  Name", default=sc.name)
-                sc.name = new_name
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("#", style="dim", width=4)
+        table.add_column("Sub-category", style="bold")
+        table.add_column("Parent of")
+        table.add_column("Description")
+        for i, sc in enumerate(subcategory_concepts, 1):
+            table.add_row(str(i), sc.name, sc.parent or "", sc.description or "")
+        rprint(table)
+
+        rprint("\n[dim]All sub-categories are included by default.[/dim]")
+        exclude_input = Prompt.ask(
+            "  Exclude numbers (comma-separated, or Enter to keep all)",
+            default="",
+        )
+        exclude_set = _parse_number_input(exclude_input, len(subcategory_concepts))
+        for i, sc in enumerate(subcategory_concepts, 1):
+            if i not in exclude_set:
                 confirmed_concepts.append(sc)
 
-    # Step 3: Review relations
+    # Step 3: Review relations as a checklist
     confirmed_names_set = {c.name for c in confirmed_concepts}
     valid_relations = [
         r
@@ -334,12 +370,24 @@ def _infer_llm(path: Path) -> Ontology | None:
     confirmed_relations = []
     if valid_relations:
         rprint("\n[bold]Review relations:[/bold]")
-        for r in valid_relations:
-            rprint(f"\n  [bold]{r.source}[/bold] --[{r.name}]--> [bold]{r.target}[/bold]")
-            if Confirm.ask("  Include?", default=True):
-                new_name = Prompt.ask("  Name", default=r.name)
-                r.name = new_name
-                confirmed_relations.append(r)
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("#", style="dim", width=4)
+        table.add_column("Source", style="bold")
+        table.add_column("Relation")
+        table.add_column("Target", style="bold")
+        for i, r in enumerate(valid_relations, 1):
+            table.add_row(str(i), r.source, r.name, r.target)
+        rprint(table)
+
+        rprint("\n[dim]All relations are included by default.[/dim]")
+        exclude_input = Prompt.ask(
+            "  Exclude numbers (comma-separated, or Enter to keep all)",
+            default="",
+        )
+        exclude_set = _parse_number_input(exclude_input, len(valid_relations))
+        confirmed_relations = [
+            r for i, r in enumerate(valid_relations, 1) if i not in exclude_set
+        ]
 
     # Build with confirmed items
     suggestion.concepts = confirmed_concepts
