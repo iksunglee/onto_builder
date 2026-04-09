@@ -109,3 +109,60 @@ class Instance:
             concept=data["concept"],
             properties=data.get("properties", {}),
         )
+
+
+@dataclass
+class Scenario:
+    """A usage scenario describing how concepts are used together."""
+
+    name: str
+    description: str
+    root_concept: str
+    includes: list[str] = field(default_factory=list)
+    action: str = "create"  # create, read, update, delete
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "root_concept": self.root_concept,
+            "includes": self.includes,
+            "action": self.action,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Scenario:
+        return cls(
+            name=data["name"],
+            description=data.get("description", ""),
+            root_concept=data["root_concept"],
+            includes=data.get("includes", []),
+            action=data.get("action", "create"),
+        )
+
+
+@dataclass
+class Constraint:
+    """A constraint rule that must hold in the ontology."""
+
+    name: str
+    description: str
+    query: str
+    violation: str
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "query": self.query,
+            "violation": self.violation,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Constraint:
+        return cls(
+            name=data["name"],
+            description=data.get("description", ""),
+            query=data.get("query", ""),
+            violation=data.get("violation", ""),
+        )
