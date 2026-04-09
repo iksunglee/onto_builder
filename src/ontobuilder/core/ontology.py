@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from ontobuilder.core.model import Concept, Property, Relation, Instance
+from ontobuilder.core.model import Concept, Property, Relation, Instance, Scenario, Constraint
 from ontobuilder.core.validation import (
     ValidationError,
     validate_concept_name_unique,
@@ -26,6 +26,8 @@ class Ontology:
         self.concepts: dict[str, Concept] = {}
         self.relations: dict[str, Relation] = {}
         self.instances: dict[str, Instance] = {}
+        self.scenarios: dict[str, Scenario] = {}
+        self.constraints: dict[str, Constraint] = {}
         self._backend: GraphBackend | None = None
 
     # -- Concepts --
@@ -139,6 +141,46 @@ class Ontology:
             self._backend.add_edge(name, concept, type="instance_of")
         return inst
 
+    # -- Scenarios --
+
+    def add_scenario(
+        self,
+        name: str,
+        *,
+        description: str = "",
+        root_concept: str,
+        includes: list[str] | None = None,
+        action: str = "create",
+    ) -> Scenario:
+        scenario = Scenario(
+            name=name,
+            description=description,
+            root_concept=root_concept,
+            includes=includes or [],
+            action=action,
+        )
+        self.scenarios[name] = scenario
+        return scenario
+
+    # -- Constraints --
+
+    def add_constraint(
+        self,
+        name: str,
+        *,
+        description: str = "",
+        query: str = "",
+        violation: str = "",
+    ) -> Constraint:
+        constraint = Constraint(
+            name=name,
+            description=description,
+            query=query,
+            violation=violation,
+        )
+        self.constraints[name] = constraint
+        return constraint
+
     # -- Graph backend --
 
     def set_backend(self, backend: GraphBackend) -> None:
@@ -220,6 +262,10 @@ class Ontology:
             data["relations"] = [r.to_dict() for r in self.relations.values()]
         if self.instances:
             data["instances"] = [i.to_dict() for i in self.instances.values()]
+        if self.scenarios:
+            data["scenarios"] = [s.to_dict() for s in self.scenarios.values()]
+        if self.constraints:
+            data["constraints"] = [c.to_dict() for c in self.constraints.values()]
         return data
 
     @classmethod
@@ -252,6 +298,14 @@ class Ontology:
         for id_ in data.get("instances", []):
             i = Instance.from_dict(id_)
             onto.instances[i.name] = i
+
+        for sd in data.get("scenarios", []):
+            s = Scenario.from_dict(sd)
+            onto.scenarios[s.name] = s
+
+        for cd in data.get("constraints", []):
+            c = Constraint.from_dict(cd)
+            onto.constraints[c.name] = c
 
         return onto
 

@@ -100,3 +100,62 @@ class TestConstraint:
             violation="Room full",
         )
         assert Constraint.from_dict(c.to_dict()) == c
+
+
+from ontobuilder import Ontology
+
+
+class TestOntologyScenarios:
+    def test_add_scenario(self):
+        onto = Ontology("Test")
+        onto.add_concept("Room", description="A room")
+        onto.add_concept("Person", description="A person")
+        s = onto.add_scenario(
+            "book-room",
+            description="Book a room",
+            root_concept="Room",
+            includes=["Room", "Person"],
+            action="create",
+        )
+        assert s.name == "book-room"
+        assert "book-room" in onto.scenarios
+
+    def test_add_constraint(self):
+        onto = Ontology("Test")
+        c = onto.add_constraint(
+            "no-overlap",
+            description="No overlapping bookings",
+            query="Booking WHERE room = {room} AND time OVERLAPS {time}",
+            violation="Room already booked",
+        )
+        assert c.name == "no-overlap"
+        assert "no-overlap" in onto.constraints
+
+    def test_scenario_serialization_roundtrip(self):
+        onto = Ontology("Test", description="With scenarios")
+        onto.add_concept("Room", description="A room")
+        onto.add_scenario(
+            "book",
+            description="Book a room",
+            root_concept="Room",
+            includes=["Room"],
+            action="create",
+        )
+        onto.add_constraint(
+            "cap",
+            description="Capacity",
+            query="Room.occ < Room.max",
+            violation="Full",
+        )
+        data = onto.to_dict()
+        assert "scenarios" in data
+        assert "constraints" in data
+        restored = Ontology.from_dict(data)
+        assert "book" in restored.scenarios
+        assert "cap" in restored.constraints
+
+    def test_empty_ontology_no_scenarios_in_dict(self):
+        onto = Ontology("Test")
+        data = onto.to_dict()
+        assert "scenarios" not in data
+        assert "constraints" not in data
