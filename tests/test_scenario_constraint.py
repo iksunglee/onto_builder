@@ -43,8 +43,7 @@ class TestScenario:
             "action": "read",
         }
         s = Scenario.from_dict(d)
-        assert s.name == "check-avail"
-        assert s.action == "read"
+        assert s == Scenario(**d)
 
     def test_scenario_roundtrip(self):
         s = Scenario(
@@ -91,7 +90,7 @@ class TestConstraint:
             "violation": "Not authorized",
         }
         c = Constraint.from_dict(d)
-        assert c.name == "auth-check"
+        assert c == Constraint(**d)
 
     def test_constraint_roundtrip(self):
         c = Constraint(
