@@ -91,6 +91,17 @@ class TestJsonSchemaOpenAIFormat:
         assert "parameters" in schema["function"]
 
 
+class TestJsonSchemaAnthropicFormat:
+    def test_anthropic_envelope(self, hospital_ontology):
+        schema = export_jsonschema_scenario(
+            hospital_ontology, "reserve-operating-room", wrapper="anthropic"
+        )
+        assert "name" in schema
+        assert "description" in schema
+        assert "input_schema" in schema
+        assert schema["name"] == "ReserveOperatingRoom"
+
+
 class TestSaveJsonSchema:
     def test_save_to_file(self, pet_store_ontology, tmp_path):
         out = tmp_path / "schema.json"
