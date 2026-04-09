@@ -1,4 +1,4 @@
-"""Tests for OntologyWorkspace (non-LLM parts)."""
+"""Tests for OntologyWorkspace (non-LLM parts). """
 
 import pytest
 
