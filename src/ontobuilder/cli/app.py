@@ -4,6 +4,7 @@ import typer
 
 from ontobuilder.cli.apply_cmds import apply_app
 from ontobuilder.cli.concept_cmds import concept_app
+from ontobuilder.cli.improve_cmds import improve_app
 from ontobuilder.cli.relation_cmds import relation_app
 from ontobuilder.cli.tool_cmds import tool_app
 
@@ -17,6 +18,7 @@ app.add_typer(apply_app, name="apply", help="Generate LLM-ready artifacts from o
 app.add_typer(concept_app, name="concept", help="Manage concepts.")
 app.add_typer(relation_app, name="relation", help="Manage relations.")
 app.add_typer(tool_app, name="tool", help="Analyze data and build OWL ontologies.")
+app.add_typer(improve_app, name="improve", help="Improve ontology quality.")
 
 
 # -- Top-level project commands --
