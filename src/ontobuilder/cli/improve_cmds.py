@@ -103,6 +103,11 @@ def compare(
 
     diff = diff_ontologies(onto_a, onto_b)
 
+    # Always perform merge when requested, regardless of output format
+    if merge:
+        merged = merge_ontologies(onto_a, onto_b)
+        save_current_ontology(merged, onto_path)
+
     if format == "json" or (output and not merge):
         data = diff.to_dict()
         if output:
@@ -112,6 +117,13 @@ def compare(
             rprint(f"[green]Diff saved to {output}[/green]")
         else:
             typer.echo(json.dumps(data, indent=2, ensure_ascii=False))
+        if merge:
+            rprint(f"\n[bold green]Merged! Saved to {onto_path}[/bold green]")
+            rprint(
+                f"  Concepts: {len(merged.concepts)}, "
+                f"Relations: {len(merged.relations)}, "
+                f"Instances: {len(merged.instances)}"
+            )
         return
 
     # Rich output
@@ -152,8 +164,6 @@ def compare(
                     rprint(f"    {k}: {v}")
 
     if merge:
-        merged = merge_ontologies(onto_a, onto_b)
-        save_current_ontology(merged, onto_path)
         rprint(f"\n[bold green]Merged! Saved to {onto_path}[/bold green]")
         rprint(
             f"  Concepts: {len(merged.concepts)}, "
