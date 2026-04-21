@@ -685,6 +685,177 @@ def infer(
     typer.echo(f"Saved to {path}")
 
 
+# -- Scenario command --
+
+
+@app.command()
+def scenario(
+    description: str = typer.Argument(None, help="Scenario description (omit for interactive mode)"),
+    name: str = typer.Option("ScenarioOntology", "--name", "-n", help="Ontology name"),
+    output: str = typer.Option(None, "--output", "-o", help="Auto-save OWL file on exit"),
+):
+    """Build an ontology from a real-world scenario using the Reasoning Engine.
+
+    Describe a scenario (planning, allocation, optimization, diagnosis, or simulation)
+    and the AI will extract entities, relationships, constraints, and goals to build
+    a structured ontology.
+
+    Examples:
+      ontobuilder scenario "A hospital needs to schedule nurses across 3 shifts"
+      ontobuilder scenario  # interactive mode
+    """
+    if not _ensure_llm_configured():
+        raise typer.Exit(1)
+
+    from pathlib import Path
+    from rich import print as rprint
+    from rich.panel import Panel
+    from rich.text import Text
+    from ontobuilder.chat.scenario import ScenarioBuilder
+
+    builder = ScenarioBuilder()
+
+    # Get scenario description
+    if not description:
+        rprint(
+            Panel(
+                "[bold]Scenario Ontology Builder[/bold]\n\n"
+                "Describe a real-world scenario and I'll build an ontology from it.\n"
+                "I'll identify entities, relationships, constraints, and goals.\n\n"
+                "Scenario types I can handle:\n"
+                "  - [cyan]Planning[/cyan]     — create something new\n"
+                "  - [cyan]Allocation[/cyan]   — assign resources\n"
+                "  - [cyan]Optimization[/cyan] — improve an outcome\n"
+                "  - [cyan]Diagnosis[/cyan]    — identify a problem\n"
+                "  - [cyan]Simulation[/cyan]   — what-if analysis",
+                title="Ontology Reasoning Engine",
+                border_style="blue",
+            )
+        )
+        try:
+            description = input("\nDescribe your scenario:\n> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if not description:
+            rprint("[yellow]No scenario provided.[/yellow]")
+            return
+
+    rprint(f"\n[bold]Analyzing scenario...[/bold]")
+
+    try:
+        result = builder.analyze(description, name=name)
+    except Exception as e:
+        rprint(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    onto = result["ontology"]
+
+    # Show analysis results
+    rprint(
+        Panel(
+            f"[bold]Type:[/bold] {result['scenario_type'].upper()}\n\n"
+            f"{result['explanation']}",
+            title="Scenario Analysis",
+            border_style="green",
+        )
+    )
+
+    rprint(f"\n[bold]Ontology:[/bold] {onto.name}")
+    rprint(f"  {len(onto.concepts)} concepts, {len(onto.relations)} relations")
+    rprint(f"\n{onto.print_tree()}")
+
+    if result["constraints"]:
+        rprint("\n[bold]Constraints:[/bold]")
+        for c in result["constraints"]:
+            rprint(f"  - {c}")
+
+    if result["goals"]:
+        rprint("\n[bold]Goals:[/bold]")
+        for g in result["goals"]:
+            rprint(f"  - {g}")
+
+    if result["recommendations"]:
+        rprint("\n[bold]Recommendations:[/bold]")
+        for r in result["recommendations"]:
+            rprint(f"  - {r}")
+
+    if result["optimization_notes"]:
+        rprint(f"\n[bold]Optimization:[/bold] {result['optimization_notes']}")
+
+    # Enter refinement chat
+    rprint(
+        Panel(
+            "Refine your scenario ontology through conversation.\n"
+            "  'show'   — show current state\n"
+            "  'tree'   — show hierarchy\n"
+            "  'check'  — run consistency check\n"
+            "  'save'   — save to file\n"
+            "  'quit'   — exit",
+            title="Refinement Chat",
+            border_style="blue",
+        )
+    )
+
+    while True:
+        try:
+            msg = input("\nYou: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if not msg:
+            continue
+        if msg.lower() in ("quit", "exit", "q"):
+            break
+
+        if msg.lower() == "show":
+            rprint(f"\n{builder.get_summary()}")
+            continue
+        if msg.lower() == "tree":
+            rprint(f"\n{onto.print_tree()}")
+            continue
+        if msg.lower() == "check":
+            reasoner = __import__(
+                "ontobuilder.owl.reasoning", fromlist=["OWLReasoner"]
+            ).OWLReasoner(onto)
+            result_inf = reasoner.run_inference()
+            rprint(f"\n{result_inf.summary}")
+            continue
+        if msg.lower() == "save":
+            out = Path(output) if output else Path(DEFAULT_FILE)
+            from ontobuilder.serialization.yaml_io import save_yaml
+            save_yaml(onto, out)
+            rprint(f"[green]Saved to {out}[/green]")
+            continue
+
+        try:
+            refine_result = builder.refine(msg)
+        except Exception as e:
+            rprint(f"[red]Error: {e}[/red]")
+            continue
+
+        rprint(f"\n[bold blue]Assistant:[/bold blue] {refine_result['explanation']}")
+
+        if refine_result["edits_applied"]:
+            rprint("\n[bold green]Changes:[/bold green]")
+            for edit in refine_result["edits_applied"]:
+                rprint(f"  + {edit}")
+
+        if refine_result["errors"]:
+            rprint("\n[bold red]Errors:[/bold red]")
+            for err in refine_result["errors"]:
+                rprint(f"  ! {err}")
+
+    # Save on exit
+    if output:
+        from ontobuilder.owl.export import save_owl
+        out = Path(output)
+        save_owl(onto, out, fmt="turtle")
+        rprint(f"\n[green]Saved OWL to {out}[/green]")
+
+    from ontobuilder.serialization.yaml_io import save_yaml
+    save_yaml(onto, Path(DEFAULT_FILE))
+    rprint(f"Ontology saved to {DEFAULT_FILE}")
+
+
 # -- OWL commands --
 
 owl_app = typer.Typer(no_args_is_help=True)

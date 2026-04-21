@@ -118,6 +118,77 @@ class AddInstanceCmd(BaseModel):
     properties: dict[str, object] = Field(default_factory=dict)
 
 
+# -- Scenario reasoning schemas --
+
+
+class EntityExtraction(BaseModel):
+    """An entity extracted from a scenario."""
+    name: str = Field(description="Entity/concept name")
+    description: str = Field(default="", description="What this entity represents in the scenario")
+    entity_type: str = Field(
+        default="thing",
+        description="Type: actor, object, process, event, location, resource, or thing",
+    )
+    attributes: list[PropertySuggestion] = Field(
+        default_factory=list, description="Key attributes of this entity"
+    )
+
+
+class GraphEdge(BaseModel):
+    """A relationship edge in the ontology graph."""
+    source: str = Field(description="Source entity")
+    relationship: str = Field(description="Relationship name (verb phrase)")
+    target: str = Field(description="Target entity")
+    cardinality: str = Field(default="many-to-many")
+    weight: str = Field(default="", description="Weight, condition, or context for this edge")
+
+
+class ScenarioAnalysis(BaseModel):
+    """Full structured output from the Ontology Reasoning Engine."""
+    scenario_type: str = Field(
+        description="One of: planning, allocation, optimization, diagnosis, simulation",
+    )
+    explanation: str = Field(description="Human-readable explanation of the scenario analysis")
+    entities: list[EntityExtraction] = Field(
+        default_factory=list, description="Extracted entities with their attributes"
+    )
+    relationships: list[GraphEdge] = Field(
+        default_factory=list, description="Graph edges connecting entities"
+    )
+    constraints: list[str] = Field(
+        default_factory=list, description="Rules, limitations, and regulations identified"
+    )
+    goals: list[str] = Field(
+        default_factory=list, description="Optimization targets or desired outcomes"
+    )
+    recommendations: list[str] = Field(
+        default_factory=list, description="Actionable recommendations"
+    )
+    optimization_notes: str = Field(
+        default="",
+        description="If applicable, how this could be modeled as an optimization problem",
+    )
+    hierarchy: list[ConceptSuggestion] = Field(
+        default_factory=list,
+        description="Concepts organized in a hierarchy (with parent references)",
+    )
+
+
+class ScenarioRefineResponse(BaseModel):
+    """LLM response when refining a scenario-based ontology."""
+    explanation: str = Field(description="What reasoning was applied and why")
+    edits: list[
+        AddConceptCmd | RemoveConceptCmd | AddRelationCmd | RemoveRelationCmd
+        | AddPropertyCmd | RenameConceptCmd | AddInstanceCmd
+    ] = Field(default_factory=list, description="Ontology edit commands to apply")
+    updated_constraints: list[str] = Field(
+        default_factory=list, description="New or updated constraints"
+    )
+    updated_goals: list[str] = Field(
+        default_factory=list, description="New or updated goals"
+    )
+
+
 class WorkspaceResponse(BaseModel):
     """LLM response during workspace chat - explanation + optional edits."""
     explanation: str = Field(description="Natural language explanation of what you're doing and why")

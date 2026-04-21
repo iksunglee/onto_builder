@@ -30,6 +30,7 @@ ontobuilder configure             # Set up LLM provider (OpenAI, Anthropic, Olla
 ontobuilder interview             # AI-guided ontology builder
 ontobuilder infer <file>          # Infer ontology from data (CSV, JSON)
 ontobuilder infer <file> --local  # Local inference (no API key needed)
+ontobuilder scenario [desc]       # Build ontology from scenario (Reasoning Engine)
 ontobuilder workspace [file]      # Interactive workspace with chat
 ontobuilder chat                  # Chat about your ontology
 ontobuilder export -f <format>    # Export (yaml/json/owl/turtle/jsonld/prompt/schema-card)
